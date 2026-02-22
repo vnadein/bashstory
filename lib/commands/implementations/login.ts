@@ -62,7 +62,7 @@ export function cmdLoginProcess(args: string[], context: CommandContext): Comman
   
   return {
     output,
-    newPrompt: `${user.username}@bashstory:~$ `,
+    newPrompt: `${user.username}@bajour:~$ `,
   }
 }
 

@@ -2,8 +2,9 @@ export interface CommandResult {
   output: string[]
   newPrompt?: string
   clear?: boolean
-  inputMode?: 'password' | 'submit' | 'tail-follow' | null
+  inputMode?: 'password' | 'submit' | 'tail-follow' | 'post-text' | 'post-multiline' | null
   inputPrompt?: string
+  renderMarkdown?: boolean
 }
 
 export interface CommandContext {

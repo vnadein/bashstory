@@ -23,8 +23,11 @@ import {
   cmdPosts,
   cmdTimeline,
   cmdReply,
+  cmdReplyComment,
   cmdShare,
   cmdAllPosts,
+  cmdPostText,
+  cmdReadPost,
   cmdFollow,
   cmdUnfollow,
   cmdFollowers,
@@ -88,6 +91,9 @@ export async function executeCommand(
   if (meta?.phase === 'passwd-new') {
     return cmdPasswdNew(meta.args || [], session)
   }
+  if (meta?.phase === 'post-text') {
+    return cmdPostText(meta.submitText || '', session)
+  }
 
   const trimmed = rawCommand.trim()
   if (!trimmed) return { output: [] }
@@ -136,9 +142,16 @@ export async function executeCommand(
       return cmdTimeline(args, session)
     case 'reply':
       return cmdReply(args, session)
+    case 'replyc':
+      return cmdReplyComment(args, session)
     case 'share':
     case 'retweet':
       return cmdShare(args, session)
+    case 'read':
+    case 'readpost':
+      return cmdReadPost(args, session)
+    case 'readmsg':
+      return cmdRead(args, session)
     case 'follow':
       return cmdFollow(args, session)
     case 'unfollow':
@@ -153,8 +166,11 @@ export async function executeCommand(
     case 'mail':
     case 'inbox':
       return cmdMail(args, session)
+    case 'readmsg':
     case 'read':
       return cmdRead(args, session)
+    case 'readpost':
+      return cmdReadPost(args, session)
     case 'mentions':
       return cmdMentions(args, session)
     case 'notify':

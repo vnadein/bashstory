@@ -19,6 +19,18 @@ export interface Post {
   parent_id: number | null
   post_type: string
   likes: number
+  views: number
+  created_at: string
+}
+
+export interface Comment {
+  id: number
+  post_id: number
+  user_id: number
+  username?: string
+  text: string
+  parent_comment_id: number | null
+  likes: number
   created_at: string
 }
 
@@ -89,12 +101,7 @@ export function createPost(userId: number, text: string, parentId?: number, post
     INSERT INTO posts (user_id, text, parent_id, post_type) VALUES (?, ?, ?, ?)
   `).run(userId, text, parentId || null, postType)
   
-  if (postType === 'reply') {
-    const parentPost = db.prepare('SELECT user_id FROM posts WHERE id = ?').get(parentId) as { user_id: number } | undefined
-    if (parentPost) {
-      createNotification(parentPost.user_id, 'reply', result.lastInsertRowid as number, userId)
-    }
-  } else if (postType === 'share') {
+  if (postType === 'share') {
     const originalPost = db.prepare('SELECT user_id FROM posts WHERE id = ?').get(parentId) as { user_id: number } | undefined
     if (originalPost) {
       createNotification(originalPost.user_id, 'share', result.lastInsertRowid as number, userId)
@@ -115,13 +122,45 @@ export function createPost(userId: number, text: string, parentId?: number, post
   return db.prepare('SELECT * FROM posts WHERE id = ?').get(result.lastInsertRowid) as Post | undefined
 }
 
+export function createComment(userId: number, postId: number, text: string, parentCommentId?: number): Comment | undefined {
+  const db = getDb()
+  const result = db.prepare(`
+    INSERT INTO comments (post_id, user_id, text, parent_comment_id) VALUES (?, ?, ?, ?)
+  `).run(postId, userId, text, parentCommentId || null)
+  
+  const parentPost = db.prepare('SELECT user_id FROM posts WHERE id = ?').get(postId) as { user_id: number } | undefined
+  if (parentPost && parentPost.user_id !== userId) {
+    createNotification(parentPost.user_id, 'reply', result.lastInsertRowid as number, userId)
+  }
+  
+  if (parentCommentId) {
+    const parentComment = db.prepare('SELECT user_id FROM comments WHERE id = ?').get(parentCommentId) as { user_id: number } | undefined
+    if (parentComment && parentComment.user_id !== userId) {
+      createNotification(parentComment.user_id, 'comment_reply', result.lastInsertRowid as number, userId)
+    }
+  }
+  
+  return db.prepare('SELECT * FROM comments WHERE id = ?').get(result.lastInsertRowid) as Comment | undefined
+}
+
+export function getCommentsByPost(postId: number): Comment[] {
+  const db = getDb()
+  return db.prepare(`
+    SELECT c.*, u.username 
+    FROM comments c 
+    JOIN users u ON c.user_id = u.id 
+    WHERE c.post_id = ?
+    ORDER BY c.created_at ASC
+  `).all(postId) as Comment[]
+}
+
 export function getPostsByUser(userId: number, limit = 10, offset = 0): Post[] {
   const db = getDb()
   return db.prepare(`
     SELECT p.*, u.username 
     FROM posts p 
     JOIN users u ON p.user_id = u.id 
-    WHERE p.user_id = ? AND p.post_type = 'post'
+    WHERE p.user_id = ? AND p.post_type IN ('post', 'share')
     ORDER BY p.created_at DESC 
     LIMIT ? OFFSET ?
   `).all(userId, limit, offset) as Post[]
@@ -129,12 +168,33 @@ export function getPostsByUser(userId: number, limit = 10, offset = 0): Post[] {
 
 export function getPostById(postId: number): Post | undefined {
   const db = getDb()
-  return db.prepare(`
+  const post = db.prepare(`
     SELECT p.*, u.username 
     FROM posts p 
     JOIN users u ON p.user_id = u.id 
     WHERE p.id = ?
   `).get(postId) as Post | undefined
+  
+  if (post) {
+    db.prepare('UPDATE posts SET views = views + 1 WHERE id = ?').run(postId)
+    post.views++
+  }
+  
+  return post
+}
+
+export function getRepostCount(postId: number): number {
+  const db = getDb()
+  const result = db.prepare('SELECT COUNT(*) as count FROM posts WHERE parent_id = ? AND post_type = ?').get(postId, 'share') as { count: number }
+  return result.count
+}
+
+export function getPostWithComments(postId: number): { post: Post | undefined; comments: Comment[] } {
+  const post = getPostById(postId)
+  if (!post) return { post: undefined, comments: [] }
+  
+  const comments = getCommentsByPost(postId)
+  return { post, comments }
 }
 
 export function getTimeline(userId: number, limit = 20): Post[] {
@@ -144,7 +204,7 @@ export function getTimeline(userId: number, limit = 20): Post[] {
     FROM posts p 
     JOIN users u ON p.user_id = u.id 
     WHERE p.user_id IN (SELECT followee_id FROM follows WHERE follower_id = ?)
-      AND p.post_type = 'post'
+      AND p.post_type IN ('post', 'share')
     ORDER BY p.created_at DESC 
     LIMIT ?
   `).all(userId, limit) as Post[]
@@ -156,7 +216,7 @@ export function getAllPosts(limit = 50): Post[] {
     SELECT p.*, u.username 
     FROM posts p 
     JOIN users u ON p.user_id = u.id 
-    WHERE p.post_type = 'post'
+    WHERE p.post_type IN ('post', 'share')
     ORDER BY p.created_at DESC 
     LIMIT ?
   `).all(limit) as Post[]

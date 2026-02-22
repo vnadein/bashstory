@@ -19,7 +19,8 @@ export function cmdTrending(args: string[], _context: CommandContext): CommandRe
   const output = ['Тренды за последние 7 дней:', '']
   output.push(...posts.map(p => {
     const date = p.created_at.split(' ')[0]
-    return `[${p.id}] +${p.likes} ${p.username} ${date}: "${p.text.slice(0, 50)}${p.text.length > 50 ? '...' : ''}"`
+    const prefix = p.post_type === 'share' ? 'RT ' : ''
+    return `[${p.id}] +${p.likes} ${prefix}${p.username} ${date}: "${p.text.slice(0, 50)}${p.text.length > 50 ? '...' : ''}"`
   }))
 
   return { output }

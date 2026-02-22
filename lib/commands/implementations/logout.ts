@@ -5,5 +5,5 @@ export function cmdLogout(context: CommandContext): CommandResult {
   if (!context.userId) {
     return { output: ['Вы не авторизованы.'] }
   }
-  return { output: ['До свидания!'], newPrompt: 'guest@bashstory:~$ ' }
+  return { output: ['До свидания!'], newPrompt: 'guest@bajour:~$ ' }
 }

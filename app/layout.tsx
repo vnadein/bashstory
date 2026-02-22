@@ -6,8 +6,8 @@ import './globals.css'
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin', 'cyrillic'] })
 
 export const metadata: Metadata = {
-  title: 'BashStory v1.0 - Хостинг цитат',
-  description: 'Хостинг цитат с интерфейсом 1985 года. Терминальное веб-приложение для публикации, чтения и голосования за цитаты.',
+  title: 'BAJOUR Social',
+  description: 'Социальная сеть в терминале. Терминальное веб-приложение для публикации постов, чтения ленты и общения.',
 }
 
 export const viewport: Viewport = {

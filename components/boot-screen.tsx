@@ -5,14 +5,14 @@ import { useEffect, useState, useRef } from 'react'
 // Generate boot messages with realistic timestamps
 function generateBootMessages(): string[] {
   const messages = [
-    'Linux version 6.8.0-generic (builder@bashstory) (gcc version 14.2.0)',
+    'Linux version 6.8.0-generic (builder@bashjournal) (gcc version 14.2.0)',
     'Command line: BOOT_IMAGE=/vmlinuz-6.8.0-generic root=/dev/sda1 ro quiet splash',
     'BIOS-provided physical RAM map:',
     'BIOS-e820: [mem 0x0000000000000000-0x000000000009fbff] usable',
     'BIOS-e820: [mem 0x000000000009fc00-0x000000000009ffff] reserved',
     'NX (Execute Disable) protection: active',
     'SMBIOS 3.0 present.',
-    'DMI: BashStory Virtual Machine, BIOS 1.0 02/21/2026',
+    'DMI: BAJOUR Virtual Machine, BIOS 1.0 02/21/2026',
     'Hypervisor detected: KVM',
     'tsc: Fast TSC calibration using PIT',
     'last_pfn = 0x1fffff max_arch_pfn = 0x400000000',
@@ -131,14 +131,14 @@ function generateBootMessages(): string[] {
     'Freeing unused kernel image (rodata/data gap) memory: 1588K',
     'x86/mm: Checked W+X mappings: passed, no W+X pages found.',
     'Run /init as init process',
-    'BashStory System v1.0 initializing...',
+    'BashJournal System v1.0 initializing...',
     'Loading kernel modules...',
     'Starting system services...',
     'Mounting filesystems...',
     'Starting network...',
     'Starting database services...',
-    'Starting BashStory terminal...',
-    'Welcome to BashStory v1.0',
+    'Starting BAJOUR terminal...',
+    'Welcome to BAJOUR v1.0',
   ]
 
   // Generate timestamps that increase realistically
@@ -182,7 +182,7 @@ export function BootScreen({ onComplete }: BootScreenProps) {
   useEffect(() => {
     if (currentIndex >= BOOT_MESSAGES.length) {
       // Show complete message briefly before finishing
-      // Add delay after "Welcome to BashStory" message
+      // Add delay after "Welcome to BAJOUR" message
       setTimeout(() => {
         setIsComplete(true)
         setTimeout(onComplete, 500)
@@ -234,7 +234,7 @@ export function BootScreen({ onComplete }: BootScreenProps) {
         ))}
         {isComplete && (
           <div className="boot-complete">
-            <pre>[    0.000000] BashStory ready. Starting terminal...</pre>
+            <pre>[    0.000000] BAJOUR ready. Starting terminal...</pre>
           </div>
         )}
       </div>

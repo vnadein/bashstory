@@ -36,6 +36,7 @@ export default function Terminal() {
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const editorRef = useRef<HTMLTextAreaElement>(null)
 
   const currentDisplayPrompt = currentPromptOverride || prompt
   const isPasswordMode = inputMode === 'login-password' || inputMode === 'register-password1' || inputMode === 'register-password2' || inputMode === 'passwd-current' || inputMode === 'passwd-new'
@@ -48,10 +49,10 @@ export default function Terminal() {
   }, [])
 
   const addLines = useCallback(
-    (texts: string[], type: 'output' | 'command' | 'prompt' = 'output') => {
+    (texts: string[], type: 'output' | 'command' | 'prompt' = 'output', renderMarkdown = false, isPostContent = false) => {
       setOutputLines((prev) => {
         let id = prev.length > 0 ? Math.max(...prev.map((l) => l.id)) + 1 : 0
-        const newLines = texts.map((text) => ({ id: id++, text, type }))
+        const newLines = texts.map((text) => ({ id: id++, text, type, renderMarkdown, isPostContent }))
         return [...prev, ...newLines]
       })
     },
@@ -334,12 +335,26 @@ export default function Terminal() {
     setIsProcessing(false)
 
     if (result.clear) setOutputLines([])
-    if (result.output?.length) addLines(result.output)
+    if (result.output?.length) {
+      const outputText = result.output.join('\n')
+      if (outputText.includes('Открытие редактора')) {
+        replaceLastLine(`${prompt}post`, 'command')
+        openEditor()
+      } else {
+        addLines(result.output, 'output', result.renderMarkdown)
+      }
+    }
     if (result.newPrompt) {
       if (/^#[0-9A-Fa-f]{6}$/.test(result.newPrompt)) {
         setThemeColor(result.newPrompt)
       } else {
         setPrompt(result.newPrompt)
+      }
+    }
+    if (result.inputMode) {
+      setInputMode(result.inputMode)
+      if (result.inputPrompt !== undefined) {
+        setCurrentPromptOverride(result.inputPrompt)
       }
     }
   }
@@ -460,11 +475,78 @@ export default function Terminal() {
       await handlePasswdCurrent(input)
     } else if (inputMode === 'passwd-new') {
       await handlePasswdNew(input)
+    } else if (inputMode === 'post-text') {
+      setIsProcessing(true)
+      const result = await sendCommand('post', 'post-text', [], input)
+      setIsProcessing(false)
+      if (result.output?.length) addLines(result.output)
+      setInputMode(null)
+      setCurrentPromptOverride(null)
     } else {
       await handleNormalCommand(input)
     }
 
     requestAnimationFrame(() => inputRef.current?.focus())
+  }
+
+  const [editorOpen, setEditorOpen] = useState(false)
+  const [editorContent, setEditorContent] = useState('')
+  const [editorKey, setEditorKey] = useState(0)
+
+  const openEditor = () => {
+    setEditorOpen(true)
+    setEditorContent('')
+    setEditorKey(k => k + 1)
+    inputRef.current?.blur()
+  }
+
+  const closeEditor = () => {
+    setEditorOpen(false)
+    setEditorContent('')
+    requestAnimationFrame(() => inputRef.current?.focus())
+  }
+
+  useEffect(() => {
+    if (!editorOpen) return
+
+    const timer = setTimeout(() => {
+      editorRef.current?.focus()
+    }, 50)
+
+    const handleEditorKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 's') {
+        e.preventDefault()
+        submitPost()
+      }
+      if (e.ctrlKey && e.key === 'q') {
+        e.preventDefault()
+        closeEditor()
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        closeEditor()
+      }
+    }
+
+    window.addEventListener('keydown', handleEditorKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleEditorKeyDown)
+      clearTimeout(timer)
+    }
+  }, [editorOpen, editorContent])
+
+  const submitPost = async () => {
+    if (!editorContent.trim()) {
+      closeEditor()
+      addLines(['Пост отменён.'], 'output')
+      return
+    }
+
+    setIsProcessing(true)
+    const result = await sendCommand('post', 'post-text', [], editorContent)
+    setIsProcessing(false)
+    closeEditor()
+    if (result.output?.length) addLines(result.output)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -582,6 +664,66 @@ export default function Terminal() {
         '--terminal-fg': themeColor,
       } as React.CSSProperties}
     >
+      {editorOpen && (
+        <div
+          key={editorKey}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: '#0C0C0C',
+            color: themeColor,
+            display: 'flex',
+            flexDirection: 'column',
+            zIndex: 1000,
+          }}
+        >
+          <div 
+            style={{ 
+              padding: '10px 20px', 
+              borderBottom: `1px solid ${themeColor}`,
+              backgroundColor: '#0C0C0C'
+            }}
+          >
+            <pre style={{ margin: 0, fontSize: '14px' }}>BAJOUR Post Editor</pre>
+          </div>
+          <textarea
+            ref={editorRef}
+            autoFocus
+            value={editorContent}
+            onChange={(e) => setEditorContent(e.target.value)}
+            style={{
+              flex: 1,
+              backgroundColor: 'transparent',
+              color: themeColor,
+              border: 'none',
+              outline: 'none',
+              fontFamily: 'inherit',
+              fontSize: '14px',
+              lineHeight: '1.5',
+              resize: 'none',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              padding: '10px 20px',
+              caretColor: themeColor,
+              cursor: 'text',
+              animation: 'none',
+            }}
+            placeholder="Введите текст поста (поддерживается Markdown)..."
+          />
+          <div 
+            style={{ 
+              padding: '10px 20px', 
+              borderTop: `1px solid ${themeColor}`,
+              backgroundColor: '#0C0C0C'
+            }}
+          >
+            <pre style={{ margin: 0, fontSize: '14px' }}>Ctrl+S - save and post | Ctrl+Q / Esc - quit</pre>
+          </div>
+        </div>
+      )}
       {interactiveMode === 'top' ? (
         <div className="terminal-output" style={{ height: '100%' }}>
           {interactiveData.map((line, i) => (

@@ -64,7 +64,7 @@ export async function cmdTop(args: string[]): Promise<CommandResult> {
   const systemProcs = [
     { pid: 1, command: 'init', user: 'root', cpu: 0.1, memory: 0.5 },
     { pid: 2, command: 'kthreadd', user: 'root', cpu: 0.0, memory: 0.0 },
-    { pid: 45, command: 'bashstory-server', user: 'www-data', cpu: 2.3, memory: 4.2 },
+    { pid: 45, command: 'bashjournal-server', user: 'www-data', cpu: 2.3, memory: 4.2 },
     { pid: 128, command: 'node --next-dev', user: 'www-data', cpu: 5.1, memory: 8.7 },
   ]
   

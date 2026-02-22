@@ -1,10 +1,11 @@
 export interface OutputLine {
   id: number
   text: string
-  type: 'output' | 'command' | 'prompt'
+  type: 'output' | 'command' | 'prompt' | 'post'
+  renderMarkdown?: boolean
 }
 
-export type InputMode = null | 'login-username' | 'login-password' | 'register-username' | 'register-password1' | 'register-password2' | 'passwd-current' | 'passwd-new'
+export type InputMode = null | 'login-username' | 'login-password' | 'register-username' | 'register-password1' | 'register-password2' | 'passwd-current' | 'passwd-new' | 'post-text' | 'post-multiline'
 
 export type InteractiveMode = null | 'top' | 'tail'
 

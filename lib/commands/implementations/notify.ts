@@ -52,6 +52,9 @@ export function cmdNotify(_args: string[], context: CommandContext): CommandResu
       case 'reply':
         text = `${n.from_username} ответил на ваш пост`
         break
+      case 'comment_reply':
+        text = `${n.from_username} ответил на ваш комментарий`
+        break
       case 'share':
         text = `${n.from_username} сделал репост вашего поста`
         break
@@ -60,6 +63,9 @@ export function cmdNotify(_args: string[], context: CommandContext): CommandResu
         break
       case 'message':
         text = `${n.from_username} отправил вам сообщение`
+        break
+      case 'like':
+        text = `${n.from_username} поставил лайк на ваш пост`
         break
       default:
         text = `Уведомление типа ${n.type}`

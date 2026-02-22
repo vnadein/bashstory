@@ -62,7 +62,7 @@ export function cmdRegisterProcess(args: string[], context: CommandContext): Com
   
   return {
     output,
-    newPrompt: `${username}@bashstory:~$ `,
+    newPrompt: `${username}@bajour:~$ `,
   }
 }
 

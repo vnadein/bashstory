@@ -20,15 +20,15 @@ export function TerminalInput({
       <span className="terminal-prompt">
         {prompt}
       </span>
-      <span className="terminal-input-text">
+      <span className="terminal-input-text" style={{ position: 'relative', display: 'inline-block' }}>
         {textBefore}
         <span
           className="terminal-cursor"
           style={{
-            display: 'inline-block',
+            position: 'absolute',
             width: '8px',
             height: '1.2em',
-            verticalAlign: 'text-top',
+            top: 0,
           }}
         />
         {textAfter || '\u00A0'}
