@@ -514,15 +514,15 @@ export default function Terminal() {
     }, 50)
 
     const handleEditorKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === 's') {
+      if (e.ctrlKey && (e.key === 's' || e.code === 'KeyS')) {
         e.preventDefault()
         submitPost()
       }
-      if (e.ctrlKey && e.key === 'q') {
+      if (e.ctrlKey && (e.key === 'q' || e.code === 'KeyQ')) {
         e.preventDefault()
         closeEditor()
       }
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' || e.code === 'Escape') {
         e.preventDefault()
         closeEditor()
       }
@@ -562,7 +562,7 @@ export default function Terminal() {
       return
     }
 
-    if (interactiveMode === 'tail' && e.ctrlKey && e.key === 'c') {
+    if (interactiveMode === 'tail' && e.ctrlKey && (e.key === 'c' || e.code === 'KeyC')) {
       e.preventDefault()
       if (interactiveInterval.current) {
         clearInterval(interactiveInterval.current)
@@ -629,7 +629,7 @@ export default function Terminal() {
       }
     }
 
-    if (e.ctrlKey && e.key === 'c') {
+    if (e.ctrlKey && (e.key === 'c' || e.code === 'KeyC')) {
       e.preventDefault()
       addLines(['^C'], 'output')
       setInputMode(null)
