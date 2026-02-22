@@ -2,49 +2,11 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { BootScreen } from './boot-screen'
-
-const ASCII_BANNER = [
-  '',
-  '██████╗  █████╗ ███████╗██╗  ██╗███████╗████████╗ ██████╗ ██████╗ ██╗   ██╗',
-  '██╔══██╗██╔══██╗██╔════╝██║  ██║██╔════╝╚══██╔══╝██╔═══██╗██╔══██╗╚██╗ ██╔╝',
-  '██████╔╝███████║███████╗███████║███████╗   ██║   ██║   ██║██████╔╝ ╚████╔╝ ',
-  '██╔══██╗██╔══██║╚════██║██╔══██║╚════██║   ██║   ██║   ██║██╔══██╗  ╚██╔╝  ',
-  '██████╔╝██║  ██║███████║██║  ██║███████║   ██║   ╚██████╔╝██║  ██║   ██║   ',
-  '╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚══════╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ',
-  '',
-  'Добро пожаловать в BashStory v1.0',
-  'Все права защищены.',
-  '',
-  'Введите help для списка команд.',
-  '',
-]
-
-interface OutputLine {
-  id: number
-  text: string
-  type: 'output' | 'command' | 'prompt'
-}
-
-type InputMode = null | 'login-username' | 'login-password' | 'register-username' | 'register-password1' | 'register-password2' | 'register-email' | 'submit'
-
-type InteractiveMode = null | 'top' | 'tail'
-
-function getCookie(name: string): string | null {
-  if (typeof document === 'undefined') return null
-  const value = `; ${document.cookie}`
-  const parts = value.split(`; ${name}=`)
-  if (parts.length === 2) return parts.pop()?.split(';').shift() || null
-  return null
-}
-
-const DEFAULT_THEME_COLOR = '#4AFB7F'
-
-// Available commands for autocomplete
-const AVAILABLE_COMMANDS = [
-  'help', 'login', 'register', 'logout', 'exit', 'reboot', 'whoami', 'clear', 'theme',
-  'ls', 'cat', 'grep', 'top', 'tail', 'fortune', 'vote', 'cowsay', 'submit', 'nano',
-  'queue', 'publish', 'reject',
-]
+import { ASCII_BANNER, DEFAULT_THEME_COLOR, DEFAULT_PROMPT, AVAILABLE_COMMANDS } from './terminal/constants'
+import { OutputLine, InputMode, InteractiveMode } from './terminal/types'
+import { getCookie } from './terminal/utils'
+import { TerminalOutput } from './terminal/components/TerminalOutput'
+import { TerminalInput } from './terminal/components/TerminalInput'
 
 export default function Terminal() {
   const [showBootScreen, setShowBootScreen] = useState(true)
@@ -52,45 +14,38 @@ export default function Terminal() {
     ASCII_BANNER.map((text, i) => ({ id: i, text, type: 'output' as const }))
   )
   const [currentInput, setCurrentInput] = useState('')
-  const [prompt, setPrompt] = useState('guest@bashstory:~$ ')
+  const [prompt, setPrompt] = useState(DEFAULT_PROMPT)
   const [commandHistory, setCommandHistory] = useState<string[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
   const [lineCounter, setLineCounter] = useState(ASCII_BANNER.length)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [themeColor, setThemeColor] = useState<string>(DEFAULT_THEME_COLOR)
+  const [themeColor, setThemeColor] = useState(DEFAULT_THEME_COLOR)
   const [cursorPosition, setCursorPosition] = useState(0)
 
-  // Tab completion state
   const [lastTabTime, setLastTabTime] = useState(0)
   const [lastTabPrefix, setLastTabPrefix] = useState('')
   const [suggestions, setSuggestions] = useState<string | null>(null)
 
-  // Interactive mode (top, htop, etc.)
   const [interactiveMode, setInteractiveMode] = useState<InteractiveMode>(null)
   const [interactiveData, setInteractiveData] = useState<string[]>([])
   const interactiveInterval = useRef<NodeJS.Timeout | null>(null)
 
-  // Multi-step input modes
   const [inputMode, setInputMode] = useState<InputMode>(null)
   const [currentPromptOverride, setCurrentPromptOverride] = useState<string | null>(null)
   const [tempData, setTempData] = useState<Record<string, string>>({})
-  const [submitLines, setSubmitLines] = useState<string[]>([])
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Load theme from cookie on mount
+  const currentDisplayPrompt = currentPromptOverride || prompt
+  const isPasswordMode = inputMode === 'login-password' || inputMode === 'register-password1' || inputMode === 'register-password2' || inputMode === 'passwd-current' || inputMode === 'passwd-new'
+
   useEffect(() => {
     const savedColor = getCookie('theme_color')
     if (savedColor && /^#[0-9A-Fa-f]{6}$/.test(savedColor)) {
       setThemeColor(savedColor)
     }
   }, [])
-
-  const nextId = useCallback(() => {
-    setLineCounter((c) => c + 1)
-    return lineCounter
-  }, [lineCounter])
 
   const addLines = useCallback(
     (texts: string[], type: 'output' | 'command' | 'prompt' = 'output') => {
@@ -103,9 +58,20 @@ export default function Terminal() {
     []
   )
 
+  const replaceLastLine = useCallback(
+    (newText: string, type: 'output' | 'command' | 'prompt' = 'output') => {
+      setOutputLines((prev) => {
+        if (prev.length === 0) return prev
+        const newId = prev[prev.length - 1].id
+        return [...prev.slice(0, -1), { id: newId, text: newText, type }]
+      })
+    },
+    []
+  )
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
-  }, [outputLines])
+  }, [outputLines, suggestions])
 
   useEffect(() => {
     requestAnimationFrame(() => {
@@ -113,7 +79,6 @@ export default function Terminal() {
     })
   }, [inputMode, outputLines.length, interactiveMode])
 
-  // Cleanup interactive mode interval on unmount
   useEffect(() => {
     return () => {
       if (interactiveInterval.current) {
@@ -126,17 +91,14 @@ export default function Terminal() {
     inputRef.current?.focus()
   }
 
-  // Find matching commands for tab completion
   const findMatches = useCallback((prefix: string): string[] => {
     if (!prefix) return AVAILABLE_COMMANDS
     return AVAILABLE_COMMANDS.filter(cmd => cmd.startsWith(prefix.toLowerCase()))
   }, [])
 
-  // Find common prefix among matches
   const findCommonPrefix = useCallback((matches: string[]): string => {
     if (matches.length === 0) return ''
     if (matches.length === 1) return matches[0]
-    
     let common = matches[0]
     for (let i = 1; i < matches.length; i++) {
       const match = matches[i]
@@ -149,34 +111,22 @@ export default function Terminal() {
     return common
   }, [])
 
-  // Handle tab completion
   const handleTabCompletion = useCallback(() => {
     const input = inputRef.current
     if (!input) return
-
     const text = input.value
     const pos = input.selectionStart || 0
-    
-    // Get the word being typed (from start or after last space)
     const lastSpaceIndex = text.lastIndexOf(' ', pos)
     const wordStart = lastSpaceIndex + 1
     const currentWord = text.substring(wordStart, pos)
-    
-    // Don't show suggestions if no characters typed
-    if (!currentWord) {
-      return
-    }
+    if (!currentWord) return
     
     const matches = findMatches(currentWord)
     const now = Date.now()
     
-    if (matches.length === 0) {
-      // No matches - do nothing
-      return
-    }
+    if (matches.length === 0) return
     
     if (matches.length === 1) {
-      // Single match - complete it
       const completed = text.substring(0, wordStart) + matches[0] + text.substring(pos)
       setCurrentInput(completed)
       setCursorPosition(wordStart + matches[0].length)
@@ -185,18 +135,14 @@ export default function Terminal() {
       return
     }
     
-    // Multiple matches
     const commonPrefix = findCommonPrefix(matches)
     
-    // If this is a second tab press within 2 seconds with same prefix, show all matches
     if (now - lastTabTime < 2000 && currentWord === lastTabPrefix && commonPrefix === currentWord) {
-      // Show matches in horizontal format (like real terminal)
       const matchesLine = '  ' + matches.join('  ')
       setSuggestions(matchesLine)
       return
     }
     
-    // Complete to common prefix
     if (commonPrefix.length > currentWord.length) {
       const completed = text.substring(0, wordStart) + commonPrefix + text.substring(pos)
       setCurrentInput(completed)
@@ -204,35 +150,26 @@ export default function Terminal() {
       setLastTabTime(now)
       setLastTabPrefix(currentWord)
     } else {
-      // First tab - just mark the time and prefix for potential second tab
       setLastTabTime(now)
       setLastTabPrefix(currentWord)
     }
   }, [findMatches, findCommonPrefix, lastTabTime, lastTabPrefix])
 
-  const sendCommand = async (
-    command: string,
-    phase?: string,
-    args?: string[],
-    submitText?: string
-  ) => {
+  const sendCommand = async (command: string, phase?: string, args?: string[], submitText?: string) => {
     try {
       const res = await fetch('/api/command', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ command, phase, args, submitText }),
       })
-      const data = await res.json()
-      return data
+      return await res.json()
     } catch {
       return { output: ['Ошибка соединения с сервером.'] }
     }
   }
 
-  // Start interactive top mode
   const startTopMode = useCallback(async () => {
     setInteractiveMode('top')
-
     const updateTop = async () => {
       try {
         const res = await fetch('/api/command', {
@@ -241,59 +178,34 @@ export default function Terminal() {
           body: JSON.stringify({ command: 'top', phase: 'update' }),
         })
         const data = await res.json()
-        if (data.output) {
-          setInteractiveData(data.output)
-        }
-      } catch {
-        // Ignore errors during auto-update
-      }
+        if (data.output) setInteractiveData(data.output)
+      } catch {}
     }
-
-    // Initial fetch
     await updateTop()
-
-    // Update every 1 second
     interactiveInterval.current = setInterval(updateTop, 1000)
-
-    // Focus input for keyboard handling
-    requestAnimationFrame(() => {
-      inputRef.current?.focus()
-    })
+    requestAnimationFrame(() => inputRef.current?.focus())
   }, [])
 
-  // Start interactive tail -f mode
   const startTailMode = useCallback(async (args: string[]) => {
     setInteractiveMode('tail')
-    
     const updateTail = async () => {
       try {
         const res = await fetch('/api/command', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ command: 'tail', phase: 'update', args: args }),
+          body: JSON.stringify({ command: 'tail', phase: 'update', args }),
         })
         const data = await res.json()
-        if (data.output) {
-          setInteractiveData(data.output)
-        }
+        if (data.output) setInteractiveData(data.output)
       } catch (err) {
         console.error('tail update error:', err)
       }
     }
-
-    // Initial fetch
     await updateTail()
-
-    // Update every 2 seconds
     interactiveInterval.current = setInterval(updateTail, 2000)
-
-    // Focus input for keyboard handling
-    requestAnimationFrame(() => {
-      inputRef.current?.focus()
-    })
+    requestAnimationFrame(() => inputRef.current?.focus())
   }, [])
 
-  // Exit interactive mode
   const exitInteractiveMode = useCallback(() => {
     if (interactiveInterval.current) {
       clearInterval(interactiveInterval.current)
@@ -301,21 +213,14 @@ export default function Terminal() {
     }
     setInteractiveMode(null)
     setInteractiveData([])
-    requestAnimationFrame(() => {
-      inputRef.current?.focus()
-    })
+    requestAnimationFrame(() => inputRef.current?.focus())
   }, [])
 
   const handleNormalCommand = async (input: string) => {
     const displayPrompt = currentPromptOverride || prompt
     
-    // Clear suggestions if showing
-    if (suggestions) {
-      setSuggestions(null)
-    }
-    
+    if (suggestions) setSuggestions(null)
     addLines([`${displayPrompt}${input}`], 'command')
-
     if (!input.trim()) return
 
     setCommandHistory((prev) => [...prev, input])
@@ -326,10 +231,8 @@ export default function Terminal() {
 
     const cmd = input.trim().toLowerCase().split(/\s+/)[0]
 
-    // Handle login command — start multi-step
     if (cmd === 'login') {
       addLines([`${prompt}${input}`], 'command')
-      // Clear screen and show login prompt
       setOutputLines([])
       setLineCounter(0)
       setCursorPosition(0)
@@ -343,10 +246,8 @@ export default function Terminal() {
       return
     }
 
-    // Handle register command — start multi-step
     if (cmd === 'register') {
       addLines([`${prompt}${input}`], 'command')
-      // Clear screen and show register prompt
       setOutputLines([])
       setLineCounter(0)
       setInputMode('register-username')
@@ -354,84 +255,70 @@ export default function Terminal() {
       return
     }
 
-    // Handle submit/nano
-    if (cmd === 'submit' || cmd === 'nano') {
-      const result = await sendCommand(cmd)
-      if (result.output?.length) {
-        addLines(result.output)
+    if (cmd === 'passwd') {
+      if (prompt === DEFAULT_PROMPT) {
+        addLines([`${prompt}${input}`], 'command')
+        addLines(['passwd: необходима авторизация.'], 'output')
+        return
       }
-      if (result.inputMode === 'submit') {
-        setInputMode('submit')
-        setCurrentPromptOverride('> ')
-        setSubmitLines([])
+      setCursorPosition(0)
+      const result = await sendCommand('passwd')
+      if (result.inputMode === 'password') {
+        setInputMode('passwd-current')
+        setCurrentPromptOverride('(passwd) Current password: ')
+      } else if (result.output?.length) {
+        addLines(result.output)
       }
       return
     }
 
-    // Handle top command - interactive mode
     if (cmd === 'top') {
       addLines([`${prompt}${input}`], 'command')
       await startTopMode()
       return
     }
 
-    // Handle tail -f command - interactive mode
     if (cmd === 'tail') {
       addLines([`${prompt}${input}`], 'command')
       const args = input.trim().split(/\s+/).slice(1)
       const hasFollow = args.some(arg => arg === '-f' || arg === '--follow')
-
       if (hasFollow) {
-        // Start interactive mode
         await startTailMode(args)
       } else {
-        // Normal mode - just show output
         setIsProcessing(true)
         const result = await sendCommand(input)
         setIsProcessing(false)
-        if (result.output?.length) {
-          addLines(result.output)
-        }
+        if (result.output?.length) addLines(result.output)
       }
       return
     }
 
-    // Handle exit/logout for guests - reset to initial state
     if (cmd === 'exit' || cmd === 'logout') {
       addLines([`${prompt}${input}`], 'command')
       const result = await sendCommand(input)
-      if (result.output?.length) {
-        addLines(result.output)
-      }
-      // Reset to initial state (like page load)
+      if (result.output?.length) addLines(result.output)
       setOutputLines(ASCII_BANNER.map((text, i) => ({ id: i, text, type: 'output' as const })))
       setLineCounter(ASCII_BANNER.length)
-      setPrompt('guest@bashstory:~$ ')
+      setPrompt(DEFAULT_PROMPT)
       setThemeColor(DEFAULT_THEME_COLOR)
       setCommandHistory([])
       setHistoryIndex(-1)
       return
     }
 
-    // Handle reboot - show boot screen and reset
     if (cmd === 'reboot') {
-      addLines([`${prompt}${input}`], 'command')
       const result = await sendCommand(input)
-      if (result.output?.length) {
-        addLines(result.output)
-      }
-      // Show boot screen after delay, then clear
+      if (result.output?.length) addLines(result.output)
       setTimeout(() => {
         if (result.clear) {
           setOutputLines([])
           setLineCounter(0)
         }
         setShowBootScreen(true)
-        // Reset terminal state after boot
         setTimeout(() => {
           setOutputLines(ASCII_BANNER.map((text, i) => ({ id: i, text, type: 'output' as const })))
           setLineCounter(ASCII_BANNER.length)
-          setPrompt('guest@bashstory:~$ ')
+          setPrompt(DEFAULT_PROMPT)
           setThemeColor(DEFAULT_THEME_COLOR)
           setCommandHistory([])
           setHistoryIndex(-1)
@@ -440,19 +327,13 @@ export default function Terminal() {
       return
     }
 
-    // Normal command
     setIsProcessing(true)
     const result = await sendCommand(input)
     setIsProcessing(false)
 
-    if (result.clear) {
-      setOutputLines([])
-    }
-    if (result.output?.length) {
-      addLines(result.output)
-    }
+    if (result.clear) setOutputLines([])
+    if (result.output?.length) addLines(result.output)
     if (result.newPrompt) {
-      // Check if newPrompt is a hex color (from theme command)
       if (/^#[0-9A-Fa-f]{6}$/.test(result.newPrompt)) {
         setThemeColor(result.newPrompt)
       } else {
@@ -463,7 +344,7 @@ export default function Terminal() {
 
   const handleLoginStep = async (input: string) => {
     if (inputMode === 'login-username') {
-      addLines([`login: ${input}`], 'command')
+      replaceLastLine(`login: ${input}`, 'command')
       setTempData({ username: input })
       setCursorPosition(0)
       setCurrentInput('')
@@ -478,30 +359,24 @@ export default function Terminal() {
       const result = await sendCommand('login', 'login', [tempData.username, input])
       setIsProcessing(false)
       if (result.newPrompt) {
-        // Successful login - show banner and welcome message
         const bannerLines = ASCII_BANNER.map((text, i) => ({ id: i, text, type: 'output' as const }))
-        const welcomeLines = [
-          `Добро пожаловать, ${tempData.username}!`,
-          '',
-        ].map((text, i) => ({ id: bannerLines.length + i, text, type: 'output' as const }))
+        const welcomeLines = [`Добро пожаловать, ${tempData.username}!`, ''].map((text, i) => ({ id: bannerLines.length + i, text, type: 'output' as const }))
         setOutputLines([...bannerLines, ...welcomeLines])
         setLineCounter(bannerLines.length + welcomeLines.length)
         setPrompt(result.newPrompt)
       } else if (result.output?.length) {
-        // Failed login - show error
         addLines(result.output)
       }
       setInputMode(null)
       setCurrentPromptOverride(null)
       setTempData({})
       setCursorPosition(0)
-      return
     }
   }
 
   const handleRegisterStep = async (input: string) => {
     if (inputMode === 'register-username') {
-      addLines([`login: ${input}`], 'command')
+      replaceLastLine(`login: ${input}`, 'command')
       setTempData({ username: input })
       setCursorPosition(0)
       setCurrentInput('')
@@ -511,6 +386,7 @@ export default function Terminal() {
     }
 
     if (inputMode === 'register-password1') {
+      replaceLastLine('password:', 'command')
       setTempData((prev) => ({ ...prev, password1: input }))
       setCursorPosition(0)
       setCurrentInput('')
@@ -520,52 +396,54 @@ export default function Terminal() {
     }
 
     if (inputMode === 'register-password2') {
+      replaceLastLine('repeat password:', 'command')
       setCurrentInput('')
       setIsProcessing(true)
-      const result = await sendCommand('register', 'register', [
-        tempData.username,
-        tempData.password1,
-        input,
-      ])
+      const result = await sendCommand('register', 'register', [tempData.username, tempData.password1, input])
       setIsProcessing(false)
       if (result.newPrompt) {
-        // Successful registration - show banner and welcome message
         const bannerLines = ASCII_BANNER.map((text, i) => ({ id: i, text, type: 'output' as const }))
-        const welcomeLines = [
-          `Добро пожаловать, ${tempData.username}!`,
-          '',
-        ].map((text, i) => ({ id: bannerLines.length + i, text, type: 'output' as const }))
+        const welcomeLines = [`Добро пожаловать, ${tempData.username}!`, ''].map((text, i) => ({ id: bannerLines.length + i, text, type: 'output' as const }))
         setOutputLines([...bannerLines, ...welcomeLines])
         setLineCounter(bannerLines.length + welcomeLines.length)
         setPrompt(result.newPrompt)
       } else if (result.output?.length) {
-        // Failed registration - show error
         addLines(result.output)
       }
       setInputMode(null)
       setCurrentPromptOverride(null)
       setTempData({})
       setCursorPosition(0)
-      return
     }
   }
 
-  const handleSubmitStep = async (input: string) => {
-    if (input.trim() === '.done') {
-      addLines(['> .done'], 'command')
-      const fullText = submitLines.join('\n')
-      setIsProcessing(true)
-      const result = await sendCommand('submit', 'submit', [], fullText)
-      setIsProcessing(false)
-      if (result.output?.length) addLines(result.output)
+  const handlePasswdCurrent = async (input: string) => {
+    replaceLastLine('(passwd) Current password:', 'command')
+    setCurrentInput('')
+    setIsProcessing(true)
+    const result = await sendCommand('passwd', 'passwd-current', [input])
+    setIsProcessing(false)
+    if (result.inputMode === 'password') {
+      setInputMode('passwd-new')
+      setCurrentPromptOverride('(passwd) New password: ')
+    } else if (result.output?.length) {
+      addLines(result.output)
       setInputMode(null)
       setCurrentPromptOverride(null)
-      setSubmitLines([])
-      return
     }
+    setCursorPosition(0)
+  }
 
-    addLines([`> ${input}`], 'command')
-    setSubmitLines((prev) => [...prev, input])
+  const handlePasswdNew = async (input: string) => {
+    replaceLastLine('(passwd) New password:', 'command')
+    setCurrentInput('')
+    setIsProcessing(true)
+    const result = await sendCommand('passwd', 'passwd-new', [input])
+    setIsProcessing(false)
+    if (result.output?.length) addLines(result.output)
+    setInputMode(null)
+    setCurrentPromptOverride(null)
+    setCursorPosition(0)
   }
 
   const handleSubmit = async () => {
@@ -574,40 +452,32 @@ export default function Terminal() {
 
     if (inputMode === 'login-username' || inputMode === 'login-password') {
       await handleLoginStep(input)
-    } else if (
-      inputMode === 'register-username' ||
-      inputMode === 'register-password1' ||
-      inputMode === 'register-password2'
-    ) {
+    } else if (inputMode === 'register-username' || inputMode === 'register-password1' || inputMode === 'register-password2') {
       await handleRegisterStep(input)
-    } else if (inputMode === 'submit') {
-      await handleSubmitStep(input)
+    } else if (inputMode === 'passwd-current') {
+      await handlePasswdCurrent(input)
+    } else if (inputMode === 'passwd-new') {
+      await handlePasswdNew(input)
     } else {
       await handleNormalCommand(input)
     }
 
-    // Фокус на поле ввода после обработки команды
-    requestAnimationFrame(() => {
-      inputRef.current?.focus()
-    })
+    requestAnimationFrame(() => inputRef.current?.focus())
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Tab completion (only in normal mode, not in password/interactive modes)
     if (e.key === 'Tab' && !inputMode && !interactiveMode) {
       e.preventDefault()
       handleTabCompletion()
       return
     }
 
-    // Exit interactive mode with 'q' (only for top)
     if (interactiveMode === 'top' && e.key === 'q') {
       e.preventDefault()
       exitInteractiveMode()
       return
     }
 
-    // Exit tail-follow mode with Ctrl+C
     if (interactiveMode === 'tail' && e.ctrlKey && e.key === 'c') {
       e.preventDefault()
       if (interactiveInterval.current) {
@@ -616,44 +486,43 @@ export default function Terminal() {
       }
       setInteractiveMode(null)
       setInteractiveData([])
-      // Clear screen and show normal prompt (like exiting top)
       setOutputLines([])
       setLineCounter(0)
-      requestAnimationFrame(() => {
-        inputRef.current?.focus()
-      })
+      requestAnimationFrame(() => inputRef.current?.focus())
       return
     }
 
-    // Allow arrow left/right for cursor navigation
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-      // Update cursor position after React renders
-      requestAnimationFrame(() => {
-        const input = e.target as HTMLInputElement
-        setCursorPosition(input.selectionStart || 0)
-      })
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      const newPos = Math.max(0, cursorPosition - 1)
+      setCursorPosition(newPos)
+      if (inputRef.current) {
+        inputRef.current.setSelectionRange(newPos, newPos)
+      }
+      return
+    }
+    if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      const newPos = Math.min(currentInput.length, cursorPosition + 1)
+      setCursorPosition(newPos)
+      if (inputRef.current) {
+        inputRef.current.setSelectionRange(newPos, newPos)
+      }
       return
     }
 
     if (e.key === 'Enter') {
       e.preventDefault()
-      // Clear suggestions before submitting
-      if (suggestions) {
-        setSuggestions(null)
-      }
+      if (suggestions) setSuggestions(null)
       handleSubmit()
       return
     }
 
-    // History navigation (only in normal mode)
     if (!inputMode) {
       if (e.key === 'ArrowUp') {
         e.preventDefault()
         if (commandHistory.length > 0) {
-          const newIndex =
-            historyIndex === -1
-              ? commandHistory.length - 1
-              : Math.max(0, historyIndex - 1)
+          const newIndex = historyIndex === -1 ? commandHistory.length - 1 : Math.max(0, historyIndex - 1)
           setHistoryIndex(newIndex)
           setCurrentInput(commandHistory[newIndex])
           setCursorPosition(commandHistory[newIndex].length)
@@ -676,20 +545,19 @@ export default function Terminal() {
       }
     }
 
-    // Cancel multi-step with Ctrl+C
     if (e.ctrlKey && e.key === 'c') {
       e.preventDefault()
       addLines(['^C'], 'output')
       setInputMode(null)
       setCurrentPromptOverride(null)
       setTempData({})
-      setSubmitLines([])
       setCurrentInput('')
+      setCursorPosition(0)
+      if (prompt.includes('(passwd)') || prompt.includes('password')) {
+        setPrompt(DEFAULT_PROMPT)
+      }
     }
   }
-
-  const currentDisplayPrompt = currentPromptOverride || prompt
-  const isPasswordMode = inputMode === 'login-password' || inputMode === 'register-password1' || inputMode === 'register-password2'
 
   if (showBootScreen) {
     return <BootScreen onComplete={() => setShowBootScreen(false)} />
@@ -700,21 +568,17 @@ export default function Terminal() {
       className="terminal-screen"
       onClick={() => {
         if (interactiveMode === 'top') {
-          requestAnimationFrame(() => {
-            inputRef.current?.focus()
-          })
+          requestAnimationFrame(() => inputRef.current?.focus())
         } else {
           focusInput()
         }
       }}
       role="application"
       aria-label="Terminal"
-      style={
-        {
-          '--theme-color': themeColor,
-          '--terminal-fg': themeColor,
-        } as React.CSSProperties
-      }
+      style={{
+        '--theme-color': themeColor,
+        '--terminal-fg': themeColor,
+      } as React.CSSProperties}
     >
       {interactiveMode === 'top' ? (
         <div className="terminal-output" style={{ height: '100%' }}>
@@ -740,26 +604,13 @@ export default function Terminal() {
         </div>
       ) : (
         <div ref={scrollRef} className="terminal-output">
-          {outputLines.map((line) => (
-            <div key={line.id} className="terminal-line">
-              <pre>{line.text}</pre>
-            </div>
-          ))}
-          <div className="terminal-input-line">
-            <span className="terminal-prompt">{currentDisplayPrompt}</span>
-            <span className="terminal-input-text" style={{ position: 'relative', display: 'inline-block' }}>
-              {isPasswordMode ? '' : currentInput || '\u00A0'}
-              <span
-                className="terminal-cursor"
-                style={{
-                  position: 'absolute',
-                  left: `${isPasswordMode ? 0 : cursorPosition * 8.4}px`,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                }}
-              />
-            </span>
-          </div>
+          <TerminalOutput lines={outputLines} themeColor={themeColor} />
+          <TerminalInput
+            prompt={currentDisplayPrompt}
+            currentInput={currentInput}
+            cursorPosition={cursorPosition}
+            isPasswordMode={isPasswordMode}
+          />
           {suggestions && (
             <div className="terminal-line" style={{ color: 'var(--terminal-fg, #4AFB7F)' }}>
               <pre>{suggestions}</pre>
@@ -768,7 +619,6 @@ export default function Terminal() {
         </div>
       )}
       
-      {/* Hidden input for keyboard handling - always present */}
       <input
         ref={inputRef}
         type="text"
