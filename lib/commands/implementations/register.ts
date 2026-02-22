@@ -2,6 +2,7 @@ import { CommandResult, CommandContext } from '../types'
 import { getDb } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { createSession } from '@/lib/session'
+import { getLoginSummary } from '@/lib/social'
 
 export function cmdRegisterStart(): CommandResult {
   return {
@@ -40,9 +41,27 @@ export function cmdRegisterProcess(args: string[], context: CommandContext): Com
 
   const hash = bcrypt.hashSync(password, 10)
   db.prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)').run(username, hash)
-
+  
+  const user = db.prepare('SELECT id FROM users WHERE username = ?').get(username) as { id: number }
+  const token = createSession(user.id)
+  
+  const summary = getLoginSummary(user.id)
+  const output: string[] = ['Добро пожаловать, ' + username + '!']
+  
+  if (summary.unreadMessages > 0) {
+    const msg = summary.unreadMessages === 1 ? 'новое сообщение' : 
+                summary.unreadMessages < 5 ? 'новых сообщения' : 'новых сообщений'
+    output.push(`У вас ${summary.unreadMessages} ${msg}. Прочитайте с помощью команды mail.`)
+  }
+  
+  if (summary.unreadNotifications > 0) {
+    const notif = summary.unreadNotifications === 1 ? 'новое уведомление' : 
+                  summary.unreadNotifications < 5 ? 'новых уведомления' : 'новых уведомлений'
+    output.push(`У вас ${summary.unreadNotifications} ${notif}. Используйте команду notify.`)
+  }
+  
   return {
-    output: [],
+    output,
     newPrompt: `${username}@bashstory:~$ `,
   }
 }

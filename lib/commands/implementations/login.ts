@@ -2,6 +2,7 @@ import { CommandResult, CommandContext } from '../types'
 import { getDb } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { createSession } from '@/lib/session'
+import { getLoginSummary } from '@/lib/social'
 
 export function cmdLoginStart(): CommandResult {
   return {
@@ -38,8 +39,29 @@ export function cmdLoginProcess(args: string[], context: CommandContext): Comman
 
   const token = createSession(user.id)
   
+  const summary = getLoginSummary(user.id)
+  const output: string[] = []
+  
+  if (summary.unreadMessages > 0) {
+    const msg = summary.unreadMessages === 1 ? 'новое сообщение' : 
+                summary.unreadMessages < 5 ? 'новых сообщения' : 'новых сообщений'
+    output.push(`У вас ${summary.unreadMessages} ${msg}. Прочитайте с помощью команды mail.`)
+  }
+  
+  if (summary.unreadNotifications > 0) {
+    const notif = summary.unreadNotifications === 1 ? 'новое уведомление' : 
+                  summary.unreadNotifications < 5 ? 'новых уведомления' : 'новых уведомлений'
+    output.push(`У вас ${summary.unreadNotifications} ${notif}. Используйте команду notify.`)
+  }
+  
+  if (output.length === 0) {
+    output.push('Добро пожаловать!')
+  } else {
+    output.unshift('Добро пожаловать, ' + user.username + '!')
+  }
+  
   return {
-    output: [],
+    output,
     newPrompt: `${user.username}@bashstory:~$ `,
   }
 }

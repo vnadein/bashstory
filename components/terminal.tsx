@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { BootScreen } from './boot-screen'
-import { ASCII_BANNER, DEFAULT_THEME_COLOR, DEFAULT_PROMPT, AVAILABLE_COMMANDS } from './terminal/constants'
+import { ASCII_BANNER, DEFAULT_THEME_COLOR, DEFAULT_PROMPT, AVAILABLE_COMMANDS, PUBLIC_COMMANDS, AUTH_COMMANDS } from './terminal/constants'
 import { OutputLine, InputMode, InteractiveMode } from './terminal/types'
 import { getCookie } from './terminal/utils'
 import { TerminalOutput } from './terminal/components/TerminalOutput'
@@ -92,9 +92,11 @@ export default function Terminal() {
   }
 
   const findMatches = useCallback((prefix: string): string[] => {
-    if (!prefix) return AVAILABLE_COMMANDS
-    return AVAILABLE_COMMANDS.filter(cmd => cmd.startsWith(prefix.toLowerCase()))
-  }, [])
+    const isLoggedIn = prompt !== DEFAULT_PROMPT
+    const commands = isLoggedIn ? AUTH_COMMANDS : [...PUBLIC_COMMANDS, 'clear']
+    if (!prefix) return commands
+    return commands.filter(cmd => cmd.startsWith(prefix.toLowerCase()))
+  }, [prompt])
 
   const findCommonPrefix = useCallback((matches: string[]): string => {
     if (matches.length === 0) return ''

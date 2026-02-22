@@ -1,13 +1,32 @@
-import { CommandResult } from '../types'
+import { CommandResult, CommandContext } from '../types'
 
-export function cmdHelp(): CommandResult {
+export function cmdHelp(_args: string[], context: CommandContext): CommandResult {
+  const isLoggedIn = !!context.userId
+
+  if (!isLoggedIn) {
+    return {
+      output: [
+        'Доступные команды (до авторизации):',
+        '',
+        '  help                    -- список команд',
+        '  login                   -- авторизация',
+        '  register                -- регистрация',
+        '  trending                -- популярные посты за неделю',
+        '',
+        'После авторизации станут доступны команды социальной сети.',
+        'Введите help после входа для полного списка команд.',
+        '',
+        '  Используйте --help после команды для подробной справки.',
+      ],
+    }
+  }
+
   return {
     output: [
       'Доступные команды:',
       '',
+      '--- Системные ---',
       '  help                    -- список команд',
-      '  login                   -- авторизация',
-      '  register                -- регистрация',
       '  logout / exit           -- выход из аккаунта',
       '  passwd                  -- изменить пароль',
       '  reboot                  -- перезагрузка системы',
@@ -15,6 +34,42 @@ export function cmdHelp(): CommandResult {
       '  clear                   -- очистить экран',
       '  theme <hex>             -- установить цвет текста (#RRGGBB)',
       '  top                     -- мониторинг процессов',
+      '',
+      '--- Пользователи ---',
+      '  finger [user]           -- профиль пользователя',
+      '  whois [user]            -- синоним finger',
+      '  users                   -- список пользователей',
+      '',
+      '--- Посты ---',
+      '  post <текст>            -- опубликовать пост',
+      '  posts [user]            -- посты пользователя',
+      '  allposts / global       -- все посты',
+      '  timeline / feed         -- лента подписок',
+      '  reply <id> <текст>      -- ответить на пост',
+      '  share <id> [текст]      -- репост поста',
+      '  trending                -- популярные посты за неделю',
+      '  like <post_id>          -- поставить лайк',
+      '  unlike <post_id>        -- убрать лайк',
+      '',
+      '--- Подписки ---',
+      '  follow <user>           -- подписаться',
+      '  unfollow <user>         -- отписаться',
+      '  followers [user]        -- подписчики',
+      '  following [user]        -- подписки',
+      '',
+      '--- Сообщения ---',
+      '  msg <user> <текст>      -- отправить сообщение',
+      '  mail / inbox            -- входящие сообщения',
+      '  read <id>               -- прочитать сообщение',
+      '',
+      '--- Уведомления ---',
+      '  mentions                -- ваши упоминания',
+      '  notify                  -- уведомления',
+      '',
+      '--- Настройки ---',
+      '  set_bio <текст>         -- изменить профиль',
+      '  block <user>            -- заблокировать пользователя',
+      '  search <запрос>         -- поиск',
       '',
       '  Используйте --help после команды для подробной справки.',
     ],

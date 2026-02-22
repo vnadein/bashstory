@@ -16,6 +16,30 @@ import {
   cmdPasswd,
   cmdPasswdCurrent,
   cmdPasswdNew,
+  cmdFinger,
+  cmdWhois,
+  cmdUsers,
+  cmdPost,
+  cmdPosts,
+  cmdTimeline,
+  cmdReply,
+  cmdShare,
+  cmdAllPosts,
+  cmdFollow,
+  cmdUnfollow,
+  cmdFollowers,
+  cmdFollowing,
+  cmdMsg,
+  cmdMail,
+  cmdRead,
+  cmdMentions,
+  cmdNotify,
+  cmdSetBio,
+  cmdBlock,
+  cmdSearch,
+  cmdTrending,
+  cmdLike,
+  cmdUnlike,
 } from './index'
 import { getDb } from '@/lib/db'
 
@@ -74,7 +98,7 @@ export async function executeCommand(
 
   switch (cmd) {
     case 'help':
-      return cmdHelp()
+      return cmdHelp(args, session)
     case 'whoami':
       return cmdWhoami(session)
     case 'clear':
@@ -94,6 +118,59 @@ export async function executeCommand(
       return cmdTheme(args)
     case 'reboot':
       return cmdReboot(session)
+    case 'finger':
+      return cmdFinger(args, session)
+    case 'whois':
+      return cmdWhois(args, session)
+    case 'users':
+      return cmdUsers(args, session)
+    case 'post':
+      return cmdPost(args, session)
+    case 'posts':
+      return cmdPosts(args, session)
+    case 'allposts':
+    case 'global':
+      return cmdAllPosts(args, session)
+    case 'timeline':
+    case 'feed':
+      return cmdTimeline(args, session)
+    case 'reply':
+      return cmdReply(args, session)
+    case 'share':
+    case 'retweet':
+      return cmdShare(args, session)
+    case 'follow':
+      return cmdFollow(args, session)
+    case 'unfollow':
+      return cmdUnfollow(args, session)
+    case 'followers':
+      return cmdFollowers(args, session)
+    case 'following':
+      return cmdFollowing(args, session)
+    case 'msg':
+    case 'message':
+      return cmdMsg(args, session)
+    case 'mail':
+    case 'inbox':
+      return cmdMail(args, session)
+    case 'read':
+      return cmdRead(args, session)
+    case 'mentions':
+      return cmdMentions(args, session)
+    case 'notify':
+      return cmdNotify(args, session)
+    case 'set_bio':
+      return cmdSetBio(args, session)
+    case 'block':
+      return cmdBlock(args, session)
+    case 'search':
+      return cmdSearch(args, session)
+    case 'trending':
+      return cmdTrending(args, session)
+    case 'like':
+      return cmdLike(args, session)
+    case 'unlike':
+      return cmdUnlike(args, session)
     default:
       return { output: [`bash: команда не найдена: ${cmd}. Введите help для списка команд.`] }
   }
