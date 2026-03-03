@@ -5,6 +5,7 @@ export interface UserProfile {
   username: string
   bio: string
   is_private: number
+  lang: string
   created_at: string
   posts_count?: number
   followers_count?: number
@@ -59,7 +60,7 @@ export interface Notification {
 export function getUserById(id: number): UserProfile | undefined {
   const db = getDb()
   return db.prepare(`
-    SELECT u.id, u.username, u.bio, u.is_private, u.created_at,
+    SELECT u.id, u.username, u.bio, u.is_private, u.lang, u.created_at,
            (SELECT COUNT(*) FROM posts WHERE user_id = u.id) as posts_count,
            (SELECT COUNT(*) FROM follows WHERE followee_id = u.id) as followers_count,
            (SELECT COUNT(*) FROM follows WHERE follower_id = u.id) as following_count
@@ -70,7 +71,7 @@ export function getUserById(id: number): UserProfile | undefined {
 export function getUserByUsername(username: string): UserProfile | undefined {
   const db = getDb()
   return db.prepare(`
-    SELECT u.id, u.username, u.bio, u.is_private, u.created_at,
+    SELECT u.id, u.username, u.bio, u.is_private, u.lang, u.created_at,
            (SELECT COUNT(*) FROM posts WHERE user_id = u.id) as posts_count,
            (SELECT COUNT(*) FROM follows WHERE followee_id = u.id) as followers_count,
            (SELECT COUNT(*) FROM follows WHERE follower_id = u.id) as following_count
@@ -81,12 +82,25 @@ export function getUserByUsername(username: string): UserProfile | undefined {
 export function getAllUsers(): UserProfile[] {
   const db = getDb()
   return db.prepare(`
-    SELECT u.id, u.username, u.bio, u.is_private, u.created_at,
+    SELECT u.id, u.username, u.bio, u.is_private, u.lang, u.created_at,
            (SELECT COUNT(*) FROM posts WHERE user_id = u.id) as posts_count,
            (SELECT COUNT(*) FROM follows WHERE followee_id = u.id) as followers_count,
            (SELECT COUNT(*) FROM follows WHERE follower_id = u.id) as following_count
     FROM users u ORDER BY u.username
   `).all() as UserProfile[]
+}
+
+export function getUserLang(userId: number): string {
+  const db = getDb()
+  const user = db.prepare('SELECT lang FROM users WHERE id = ?').get(userId) as { lang: string } | undefined
+  return user?.lang || 'en'
+}
+
+export function setUserLang(userId: number, lang: string): boolean {
+  if (lang !== 'ru' && lang !== 'en') return false
+  const db = getDb()
+  const result = db.prepare('UPDATE users SET lang = ? WHERE id = ?').run(lang, userId)
+  return result.changes > 0
 }
 
 export function updateUserBio(userId: number, bio: string): boolean {

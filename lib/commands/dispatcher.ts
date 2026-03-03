@@ -43,6 +43,7 @@ import {
   cmdTrending,
   cmdLike,
   cmdUnlike,
+  cmdLang,
 } from './index'
 import { getDb } from '@/lib/db'
 
@@ -106,7 +107,7 @@ export async function executeCommand(
     case 'help':
       return cmdHelp(args, session)
     case 'whoami':
-      return cmdWhoami(session)
+      return cmdWhoami(args, session)
     case 'clear':
       return cmdClear()
     case 'login':
@@ -121,7 +122,10 @@ export async function executeCommand(
     case 'top':
       return await cmdTop(args)
     case 'theme':
-      return cmdTheme(args)
+      return cmdTheme(args, session)
+    case 'lang':
+    case 'language':
+      return cmdLang(args, session)
     case 'reboot':
       return cmdReboot(session)
     case 'finger':

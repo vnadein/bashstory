@@ -1,15 +1,16 @@
 import { CommandResult, CommandContext } from '../types'
 import { getMentions, getNotifications, getUnreadNotificationsCount, markNotificationsRead } from '@/lib/social'
+import { getLocale, t } from '@/lib/i18n'
 
 export function cmdMentions(_args: string[], context: CommandContext): CommandResult {
   if (!context.userId) {
-    return { output: ['Необходимо войти в систему.'] }
+    return { output: [t('terminal.needAuth')] }
   }
 
   const mentions = getMentions(context.userId)
 
   if (mentions.length === 0) {
-    return { output: ['Вас никто не упоминал.'] }
+    return { output: [t('terminal.noMentions')] }
   }
 
   const output = mentions.map(p => {
@@ -23,19 +24,19 @@ export function cmdMentions(_args: string[], context: CommandContext): CommandRe
 
 export function cmdNotify(_args: string[], context: CommandContext): CommandResult {
   if (!context.userId) {
-    return { output: ['Необходимо войти в систему.'] }
+    return { output: [t('terminal.needAuth')] }
   }
 
   const unreadCount = getUnreadNotificationsCount(context.userId)
   const notifications = getNotifications(context.userId)
 
   if (notifications.length === 0) {
-    return { output: ['Уведомлений нет.'] }
+    return { output: [t('terminal.noNotifications')] }
   }
 
   const output: string[] = []
   if (unreadCount > 0) {
-    output.push(`У вас ${unreadCount} непрочитанных уведомлений.`)
+    output.push(t('terminal.unreadNotifications', { count: unreadCount.toString() }))
     output.push('')
   }
 
@@ -47,28 +48,28 @@ export function cmdNotify(_args: string[], context: CommandContext): CommandResu
     let text = ''
     switch (n.type) {
       case 'follow':
-        text = `${n.from_username} подписался на вас`
+        text = t('terminal.notificationFollow', { username: n.from_username || '' })
         break
       case 'reply':
-        text = `${n.from_username} ответил на ваш пост`
+        text = t('terminal.notificationReply', { username: n.from_username || '' })
         break
       case 'comment_reply':
-        text = `${n.from_username} ответил на ваш комментарий`
+        text = t('terminal.notificationCommentReply', { username: n.from_username || '' })
         break
       case 'share':
-        text = `${n.from_username} сделал репост вашего поста`
+        text = t('terminal.notificationShare', { username: n.from_username || '' })
         break
       case 'mention':
-        text = `${n.from_username} упомянул вас`
+        text = t('terminal.notificationMention', { username: n.from_username || '' })
         break
       case 'message':
-        text = `${n.from_username} отправил вам сообщение`
+        text = t('terminal.notificationMessage', { username: n.from_username || '' })
         break
       case 'like':
-        text = `${n.from_username} поставил лайк на ваш пост`
+        text = t('terminal.notificationLike', { username: n.from_username || '' })
         break
       default:
-        text = `Уведомление типа ${n.type}`
+        text = `Notification type: ${n.type}`
     }
     
     output.push(`[${n.id}] ${date} ${time} ${text}${read}`)

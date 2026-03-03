@@ -1,9 +1,13 @@
 import { CommandResult, CommandContext } from '../types'
-import { deleteSession } from '@/lib/session'
+import { t } from '@/lib/i18n'
 
 export function cmdLogout(context: CommandContext): CommandResult {
   if (!context.userId) {
-    return { output: ['Вы не авторизованы.'] }
+    return { output: [t('terminal.needAuth')] }
   }
-  return { output: ['До свидания!'], newPrompt: 'guest@bajour:~$ ' }
+
+  return {
+    output: [t('terminal.loggedOut')],
+    newPrompt: 'guest@bajour:~$ ',
+  }
 }

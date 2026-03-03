@@ -2,11 +2,30 @@ import { CommandResult, CommandContext } from '../types'
 import { getDb } from '@/lib/db'
 import { exec } from 'child_process'
 import { promisify } from 'util'
+import { getLocale, t } from '@/lib/i18n'
 
 const execPromise = promisify(exec)
 
 export async function cmdTop(args: string[]): Promise<CommandResult> {
+  const lang = getLocale()
+  
   if (args[0] === '--help' || args[0] === '-h') {
+    if (lang === 'en') {
+      return {
+        output: [
+          'Usage: top',
+          '',
+          'Real-time process monitoring.',
+          'Shows server load and active user commands.',
+          '',
+          'Options:',
+          '  --help, -h     show this help',
+          '',
+          'Controls:',
+          '  q              exit top mode',
+        ],
+      }
+    }
     return {
       output: [
         'Использование: top',

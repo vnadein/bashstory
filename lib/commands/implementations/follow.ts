@@ -1,84 +1,99 @@
 import { CommandResult, CommandContext } from '../types'
-import { follow, unfollow, getFollowers, getFollowing, getUserByUsername, getUserById } from '@/lib/social'
+import { follow, unfollow, getFollowers, getFollowing, isFollowing, getUserByUsername } from '@/lib/social'
+import { getLocale, t } from '@/lib/i18n'
 
 export function cmdFollow(args: string[], context: CommandContext): CommandResult {
   if (!context.userId) {
-    return { output: ['Необходимо войти в систему.'] }
+    return { output: [t('terminal.needAuth')] }
   }
 
   if (args.length === 0) {
-    return { output: ['Использование: follow <username>'] }
+    return { output: [t('terminal.usage', { usage: 'follow <username>' })] }
   }
 
   const username = args[0]
   const success = follow(context.userId, username)
 
   if (!success) {
-    return { output: [`Не удалось подписаться на ${username}.`] }
+    const user = getUserByUsername(username)
+    if (!user) {
+      return { output: [t('terminal.userNotFound', { username })] }
+    }
+    if (user.id === context.userId) {
+      return { output: [t('terminal.cannotFollowSelf')] }
+    }
+    return { output: [t('terminal.alreadyFollowing', { username })] }
   }
 
-  return { output: [`Вы подписались на ${username}.`] }
+  return { output: [t('terminal.followSuccess', { username })] }
 }
 
 export function cmdUnfollow(args: string[], context: CommandContext): CommandResult {
   if (!context.userId) {
-    return { output: ['Необходимо войти в систему.'] }
+    return { output: [t('terminal.needAuth')] }
   }
 
   if (args.length === 0) {
-    return { output: ['Использование: unfollow <username>'] }
+    return { output: [t('terminal.usage', { usage: 'unfollow <username>' })] }
   }
 
   const username = args[0]
   const success = unfollow(context.userId, username)
 
   if (!success) {
-    return { output: [`Не удалось отписаться от ${username}.`] }
+    return { output: [t('terminal.userNotFound', { username })] }
   }
 
-  return { output: [`Вы отписались от ${username}.`] }
+  return { output: [t('terminal.unfollowSuccess', { username })] }
 }
 
 export function cmdFollowers(args: string[], context: CommandContext): CommandResult {
   if (!context.userId) {
-    return { output: ['Необходимо войти в систему.'] }
+    return { output: [t('terminal.needAuth')] }
   }
 
-  const username = args[0]
-  let user = username ? getUserByUsername(username) : getUserById(context.userId)
+  const lang = getLocale()
+  let targetUserId = context.userId
 
-  if (!user) {
-    return { output: [`Пользователь ${username} не найден.`] }
+  if (args.length > 0) {
+    const user = getUserByUsername(args[0])
+    if (!user) {
+      return { output: [t('terminal.userNotFound', { username: args[0] })] }
+    }
+    targetUserId = user.id
   }
 
-  const followers = getFollowers(user.id)
+  const followers = getFollowers(targetUserId)
 
   if (followers.length === 0) {
-    return { output: [`У ${user.username} нет подписчиков.`] }
+    return { output: [t('terminal.noFollowers')] }
   }
 
-  const output = followers.map(f => f.username)
+  const output = followers.map(u => `@${u.username}`)
   return { output }
 }
 
 export function cmdFollowing(args: string[], context: CommandContext): CommandResult {
   if (!context.userId) {
-    return { output: ['Необходимо войти в систему.'] }
+    return { output: [t('terminal.needAuth')] }
   }
 
-  const username = args[0]
-  let user = username ? getUserByUsername(username) : getUserById(context.userId)
+  let targetUserId = context.userId
 
-  if (!user) {
-    return { output: [`Пользователь ${username} не найден.`] }
+  if (args.length > 0) {
+    const user = getUserByUsername(args[0])
+    if (!user) {
+      return { output: [t('terminal.userNotFound', { username: args[0] })] }
+    }
+    targetUserId = user.id
   }
 
-  const following = getFollowing(user.id)
+  const following = getFollowing(targetUserId)
 
   if (following.length === 0) {
-    return { output: [`${user.username} ни на кого не подписан.`] }
+    return { output: [t('terminal.noFollowing')] }
   }
 
-  const output = following.map(f => f.username)
+  const output = following.map(u => `@${u.username}`)
   return { output }
 }

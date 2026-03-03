@@ -1,31 +1,45 @@
 import { CommandResult, CommandContext } from '../types'
-import { getUserByUsername, getAllUsers } from '@/lib/social'
+import { getUserByUsername, getUserById, getAllUsers, getUserById as getUserProfile } from '@/lib/social'
+import { getLocale, t } from '@/lib/i18n'
 
 export function cmdFinger(args: string[], context: CommandContext): CommandResult {
-  if (!context.userId) {
-    return { output: ['Необходимо войти в систему.'] }
+  const lang = getLocale()
+  
+  let username: string | undefined = args[0]
+  
+  if (!username) {
+    if (context.userId) {
+      const user = getUserById(context.userId)
+      username = user?.username
+    }
   }
 
-  const username = args[0]
-
   if (!username) {
-    return { output: ['Использование: finger [username]'] }
+    return { output: [t('terminal.usage', { usage: 'finger [username]' })] }
   }
 
   const user = getUserByUsername(username)
+
   if (!user) {
-    return { output: [`Пользователь ${username} не найден.`] }
+    return { output: [t('terminal.userNotFound', { username })] }
   }
 
-  const output = [
-    `Login: ${user.username}`,
-    `Name: ${user.bio || '(нет данных)'}`,
-    `Registered: ${user.created_at.split(' ')[0]}`,
-    `Posts: ${user.posts_count || 0}`,
-    `Followers: ${user.followers_count || 0}`,
-    `Following: ${user.following_count || 0}`,
-    `Account: ${user.is_private ? 'private' : 'public'}`,
-  ]
+  const output: string[] = []
+  
+  output.push(`Login: ${user.username}`)
+  output.push(`${t('terminal.postsCount', { count: (user.posts_count || 0).toString() })}`)
+  output.push(t('terminal.followersLabel', { count: (user.followers_count || 0).toString() }))
+  output.push(t('terminal.followingLabel', { count: (user.following_count || 0).toString() }))
+  output.push(`${t('terminal.memberSince')}: ${user.created_at.split(' ')[0]}`)
+  
+  if (user.is_private) {
+    output.push(t('terminal.accountPrivate'))
+  }
+  
+  if (user.bio) {
+    output.push('')
+    output.push(`${t('terminal.bio')}: ${user.bio}`)
+  }
 
   return { output }
 }
@@ -36,12 +50,13 @@ export function cmdWhois(args: string[], context: CommandContext): CommandResult
 
 export function cmdUsers(_args: string[], context: CommandContext): CommandResult {
   if (!context.userId) {
-    return { output: ['Необходимо войти в систему.'] }
+    return { output: [t('terminal.needAuth')] }
   }
 
   const users = getAllUsers()
+
   if (users.length === 0) {
-    return { output: ['Нет зарегистрированных пользователей.'] }
+    return { output: [t('terminal.noUsers')] }
   }
 
   const output = users.map(u => u.username)

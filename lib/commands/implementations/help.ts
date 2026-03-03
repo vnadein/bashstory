@@ -1,14 +1,36 @@
 import { CommandResult, CommandContext } from '../types'
+import { getLocale, t } from '@/lib/i18n'
 
 export function cmdHelp(_args: string[], context: CommandContext): CommandResult {
   const isLoggedIn = !!context.userId
+  const lang = getLocale()
 
   if (!isLoggedIn) {
+    if (lang === 'en') {
+      return {
+        output: [
+          'Available commands (before login):',
+          '',
+          '  help                    -- list of commands',
+          '  lang <ru|en>          -- interface language',
+          '  login                  -- authorization',
+          '  register               -- registration',
+          '  trending              -- popular posts this week',
+          '  read <id>             -- read post with comments',
+          '  finger [user]         -- user profile',
+          '  whois [user]          -- alias for finger',
+          '',
+          'After login, social network commands will be available.',
+          'Type help after login for full command list.',
+        ],
+      }
+    }
     return {
       output: [
         'Доступные команды (до авторизации):',
         '',
         '  help                    -- список команд',
+        '  lang <ru|en>           -- язык интерфейса',
         '  login                   -- авторизация',
         '  register                -- регистрация',
         '  trending                -- популярные посты за неделю',
@@ -22,12 +44,72 @@ export function cmdHelp(_args: string[], context: CommandContext): CommandResult
     }
   }
 
+  if (lang === 'en') {
+    return {
+      output: [
+        'Available commands:',
+        '',
+        '--- System ---',
+        '  help                    -- list of commands',
+        '  lang <ru|en>          -- interface language',
+        '  logout / exit          -- logout',
+        '  passwd                 -- change password',
+        '  reboot                 -- restart system',
+        '  whoami                 -- current user',
+        '  clear                  -- clear screen',
+        '  theme <hex>           -- set text color (#RRGGBB)',
+        '  top                    -- process monitor',
+        '',
+        '--- Users ---',
+        '  finger [user]          -- user profile',
+        '  whois [user]           -- alias for finger',
+        '  users                  -- list of users',
+        '',
+        '--- Posts ---',
+        '  post [text]           -- publish post (Markdown)',
+        '  posts [user]          -- user posts',
+        '  read / readpost <id>  -- read post with comments',
+        '  reply <id> <text>     -- reply to post',
+        '  replyc <id> <#> <text> -- reply to comment',
+        '  allposts / global     -- all posts',
+        '  timeline / feed       -- subscription feed',
+        '  share <id> [text]    -- share post',
+        '  trending              -- popular posts this week',
+        '  like <post_id>        -- like post',
+        '  unlike <post_id>      -- unlike post',
+        '',
+        '--- Subscriptions ---',
+        '  follow <user>         -- subscribe',
+        '  unfollow <user>       -- unsubscribe',
+        '  followers [user]      -- followers',
+        '  following [user]     -- following',
+        '',
+        '--- Messages ---',
+        '  msg <user> <text>    -- send message',
+        '  mail / inbox         -- inbox',
+        '  readmsg <id>          -- read message',
+        '',
+        '--- Notifications ---',
+        '  mentions              -- your mentions',
+        '  notify                -- notifications',
+        '',
+        '--- Settings ---',
+        '  set_bio <text>        -- edit profile',
+        '  block <user>         -- block user',
+        '  search <query>       -- search',
+        '',
+        'Use --help after a command for detailed help.',
+      ],
+    }
+  }
+
   return {
     output: [
       'Доступные команды:',
       '',
       '--- Системные ---',
       '  help                    -- список команд',
+      '  lang <ru|en>           -- язык интерфейса',
       '  logout / exit           -- выход из аккаунта',
       '  passwd                  -- изменить пароль',
       '  reboot                  -- перезагрузка системы',

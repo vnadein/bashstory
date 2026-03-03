@@ -1,12 +1,13 @@
 import { CommandResult, CommandContext } from '../types'
+import { t } from '@/lib/i18n'
 
 export function cmdReboot(context: CommandContext): CommandResult {
-  const user = context.username || 'guest'
+  if (!context.userId) {
+    return { output: [t('terminal.confirmReboot')] }
+  }
+
   return {
-    output: [
-      `Broadcast message from ${user}@bajour:`,
-      '  The system is going down for reboot NOW!',
-    ],
+    output: [t('terminal.rebooting')],
     clear: true,
   }
 }

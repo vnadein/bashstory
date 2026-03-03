@@ -15,5 +15,6 @@ export { cmdMsg, cmdMail, cmdRead } from './implementations/mail'
 export { cmdMentions, cmdNotify } from './implementations/notify'
 export { cmdSetBio, cmdBlock, cmdSearch } from './implementations/social'
 export { cmdTrending, cmdLike, cmdUnlike } from './implementations/trending'
+export { cmdLang } from './implementations/lang'
 
 export type { CommandResult, CommandContext, CommandMeta, Command } from './types'

@@ -1,77 +1,88 @@
 import { CommandResult, CommandContext } from '../types'
-import { sendMessage, getInbox, getMessage } from '@/lib/social'
+import { sendMessage, getInbox, getMessage, getUserByUsername } from '@/lib/social'
+import { getLocale, t } from '@/lib/i18n'
 
 export function cmdMsg(args: string[], context: CommandContext): CommandResult {
   if (!context.userId) {
-    return { output: ['Необходимо войти в систему.'] }
+    return { output: [t('terminal.needAuth')] }
   }
 
   if (args.length < 2) {
-    return { output: ['Использование: msg <username> <текст>'] }
+    return { output: [t('terminal.usage', { usage: 'msg <username> <text>' })] }
   }
 
   const username = args[0]
   const text = args.slice(1).join(' ')
 
+  if (context.username === username) {
+    return { output: [t('terminal.cannotMessageSelf')] }
+  }
+
   const success = sendMessage(context.userId, username, text)
 
   if (!success) {
-    return { output: [`Не удалось отправить сообщение пользователю ${username}.`] }
+    return { output: [t('terminal.messageError')] }
   }
 
-  return { output: [`Сообщение отправлено пользователю ${username}.`] }
+  return { output: [t('terminal.messageSent', { username })] }
 }
 
 export function cmdMail(_args: string[], context: CommandContext): CommandResult {
   if (!context.userId) {
-    return { output: ['Необходимо войти в систему.'] }
+    return { output: [t('terminal.needAuth')] }
   }
 
   const messages = getInbox(context.userId)
 
   if (messages.length === 0) {
-    return { output: ['Входящих сообщений нет.'] }
+    return { output: [t('terminal.inboxEmpty')] }
   }
 
-  const output = messages.map(m => {
+  const output: string[] = []
+
+  for (const m of messages.slice(0, 20)) {
     const date = m.created_at.split(' ')[0]
     const time = m.created_at.split(' ')[1]?.slice(0, 5) || ''
-    const unread = m.read_at ? '' : ' *'
-    return `[${m.id}] ${date} ${time} ${m.from_username}${unread}`
-  })
+    const read = m.read_at ? '' : ' *'
+    output.push(`[${m.id}] ${date} ${time} ${t('terminal.from')} @${m.from_username}${read}`)
+    output.push(`    ${m.text.slice(0, 80)}${m.text.length > 80 ? '...' : ''}`)
+    output.push('')
+  }
 
   return { output }
 }
 
 export function cmdRead(args: string[], context: CommandContext): CommandResult {
   if (!context.userId) {
-    return { output: ['Необходимо войти в систему.'] }
+    return { output: [t('terminal.needAuth')] }
   }
 
   if (args.length === 0) {
-    return { output: ['Использование: read <msg_id>'] }
+    return { output: [t('terminal.usage', { usage: 'readmsg <id>' })] }
   }
 
   const messageId = parseInt(args[0])
   if (isNaN(messageId)) {
-    return { output: ['Укажите корректный ID сообщения.'] }
+    return { output: [t('terminal.invalidId')] }
   }
 
   const message = getMessage(messageId, context.userId)
 
   if (!message) {
-    return { output: [`Сообщение #${messageId} не найдено.`] }
+    return { output: [t('terminal.messageNotFound', { id: messageId.toString() })] }
   }
 
-  const date = message.created_at.split(' ')[0]
-  const time = message.created_at.split(' ')[1]?.slice(0, 5) || ''
-
-  const output = [
-    `From: ${message.from_username}`,
-    `Date: ${date} ${time}`,
-    '',
-    message.text,
-  ]
+  const output: string[] = []
+  
+  output.push('─'.repeat(50))
+  output.push(`${t('terminal.from')}: @${message.from_username}`)
+  output.push(`${t('terminal.to')}: @${message.to_username}`)
+  output.push(`${t('terminal.date')}: ${message.created_at}`)
+  output.push('─'.repeat(50))
+  output.push('')
+  output.push(message.text)
+  output.push('')
+  output.push('─'.repeat(50))
 
   return { output }
 }

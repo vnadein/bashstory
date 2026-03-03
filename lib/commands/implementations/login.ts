@@ -3,38 +3,42 @@ import { getDb } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { createSession } from '@/lib/session'
 import { getLoginSummary } from '@/lib/social'
+import { getLocale, t } from '@/lib/i18n'
 
 export function cmdLoginStart(): CommandResult {
+  const lang = getLocale()
   return {
     output: [],
     inputMode: 'password',
-    inputPrompt: 'login: ',
+    inputPrompt: lang === 'ru' ? 'login: ' : 'login: ',
   }
 }
 
 export function cmdLoginProcess(args: string[], context: CommandContext): CommandResult {
+  const lang = getLocale()
   const username = args[0]
   const password = args[1]
   
   if (!username || !password) {
-    return { output: ['login: необходимо указать логин и пароль.'] }
+    return { output: [t('terminal.loginRequired')] }
   }
 
   const db = getDb()
-  const user = db.prepare('SELECT id, username, password_hash, role FROM users WHERE username = ?').get(username) as {
+  const user = db.prepare('SELECT id, username, password_hash, role, lang FROM users WHERE username = ?').get(username) as {
     id: number
     username: string
     password_hash: string
     role: string
+    lang: string
   } | undefined
 
   if (!user) {
-    return { output: ['login: неверный логин или пароль.'] }
+    return { output: [t('terminal.loginFailed')] }
   }
 
   const valid = bcrypt.compareSync(password, user.password_hash)
   if (!valid) {
-    return { output: ['login: неверный логин или пароль.'] }
+    return { output: [t('terminal.loginFailed')] }
   }
 
   const token = createSession(user.id)
@@ -43,26 +47,29 @@ export function cmdLoginProcess(args: string[], context: CommandContext): Comman
   const output: string[] = []
   
   if (summary.unreadMessages > 0) {
-    const msg = summary.unreadMessages === 1 ? 'новое сообщение' : 
-                summary.unreadMessages < 5 ? 'новых сообщения' : 'новых сообщений'
-    output.push(`У вас ${summary.unreadMessages} ${msg}. Прочитайте с помощью команды mail.`)
+    let msgKey = 'newMessagesMore'
+    if (summary.unreadMessages === 1) msgKey = 'newMessage'
+    else if (summary.unreadMessages < 5) msgKey = 'newMessages'
+    output.push(t('terminal.youHaveMessages', { count: summary.unreadMessages.toString(), msg: t('terminal.' + msgKey) }))
   }
   
   if (summary.unreadNotifications > 0) {
-    const notif = summary.unreadNotifications === 1 ? 'новое уведомление' : 
-                  summary.unreadNotifications < 5 ? 'новых уведомления' : 'новых уведомлений'
-    output.push(`У вас ${summary.unreadNotifications} ${notif}. Используйте команду notify.`)
+    let notifKey = 'newNotificationsMore'
+    if (summary.unreadNotifications === 1) notifKey = 'newNotification'
+    else if (summary.unreadNotifications < 5) notifKey = 'newNotifications'
+    output.push(t('terminal.youHaveNotifications', { count: summary.unreadNotifications.toString(), notif: t('terminal.' + notifKey) }))
   }
   
   if (output.length === 0) {
-    output.push('Добро пожаловать!')
+    output.push(t('terminal.welcomeBack'))
   } else {
-    output.unshift('Добро пожаловать, ' + user.username + '!')
+    output.unshift(t('terminal.loginSuccess', { username }))
   }
   
   return {
     output,
     newPrompt: `${user.username}@bajour:~$ `,
+    userLang: user.lang || 'en',
   }
 }
 

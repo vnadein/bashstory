@@ -5,6 +5,7 @@ import { BootScreen } from './boot-screen'
 import { ASCII_BANNER, DEFAULT_THEME_COLOR, DEFAULT_PROMPT, AVAILABLE_COMMANDS, PUBLIC_COMMANDS, AUTH_COMMANDS } from './terminal/constants'
 import { OutputLine, InputMode, InteractiveMode } from './terminal/types'
 import { getCookie } from './terminal/utils'
+import { initLocale, setUserLocale, t, getLocale } from '@/lib/i18n'
 import { TerminalOutput } from './terminal/components/TerminalOutput'
 import { TerminalInput } from './terminal/components/TerminalInput'
 
@@ -42,6 +43,7 @@ export default function Terminal() {
   const isPasswordMode = inputMode === 'login-password' || inputMode === 'register-password1' || inputMode === 'register-password2' || inputMode === 'passwd-current' || inputMode === 'passwd-new'
 
   useEffect(() => {
+    initLocale()
     const savedColor = getCookie('theme_color')
     if (savedColor && /^#[0-9A-Fa-f]{6}$/.test(savedColor)) {
       setThemeColor(savedColor)
@@ -242,7 +244,7 @@ export default function Terminal() {
       const result = await sendCommand('login')
       if (result.inputMode === 'password') {
         setInputMode('login-username')
-        setCurrentPromptOverride('login: ')
+        setCurrentPromptOverride(t('terminal.loginPrompt'))
       } else if (result.output?.length) {
         addLines(result.output)
       }
@@ -254,21 +256,21 @@ export default function Terminal() {
       setOutputLines([])
       setLineCounter(0)
       setInputMode('register-username')
-      setCurrentPromptOverride('login: ')
+      setCurrentPromptOverride(t('terminal.loginPrompt'))
       return
     }
 
     if (cmd === 'passwd') {
       if (prompt === DEFAULT_PROMPT) {
         addLines([`${prompt}${input}`], 'command')
-        addLines(['passwd: необходима авторизация.'], 'output')
+        addLines([t('terminal.passwdRequired')], 'output')
         return
       }
       setCursorPosition(0)
       const result = await sendCommand('passwd')
       if (result.inputMode === 'password') {
         setInputMode('passwd-current')
-        setCurrentPromptOverride('(passwd) Current password: ')
+        setCurrentPromptOverride(t('terminal.passwdCurrent'))
       } else if (result.output?.length) {
         addLines(result.output)
       }
@@ -366,7 +368,7 @@ export default function Terminal() {
       setCursorPosition(0)
       setCurrentInput('')
       setInputMode('login-password')
-      setCurrentPromptOverride('password: ')
+      setCurrentPromptOverride(t('terminal.password'))
       return
     }
 
@@ -376,6 +378,9 @@ export default function Terminal() {
       const result = await sendCommand('login', 'login', [tempData.username, input])
       setIsProcessing(false)
       if (result.newPrompt) {
+        if (result.userLang) {
+          setUserLocale(result.userLang)
+        }
         const bannerLines = ASCII_BANNER.map((text, i) => ({ id: i, text, type: 'output' as const }))
         const welcomeLines = [`Добро пожаловать, ${tempData.username}!`, ''].map((text, i) => ({ id: bannerLines.length + i, text, type: 'output' as const }))
         setOutputLines([...bannerLines, ...welcomeLines])
@@ -398,7 +403,7 @@ export default function Terminal() {
       setCursorPosition(0)
       setCurrentInput('')
       setInputMode('register-password1')
-      setCurrentPromptOverride('password: ')
+      setCurrentPromptOverride(t('terminal.password'))
       return
     }
 
@@ -408,7 +413,7 @@ export default function Terminal() {
       setCursorPosition(0)
       setCurrentInput('')
       setInputMode('register-password2')
-      setCurrentPromptOverride('repeat password: ')
+      setCurrentPromptOverride(t('terminal.repeatPassword'))
       return
     }
 
@@ -420,7 +425,7 @@ export default function Terminal() {
       setIsProcessing(false)
       if (result.newPrompt) {
         const bannerLines = ASCII_BANNER.map((text, i) => ({ id: i, text, type: 'output' as const }))
-        const welcomeLines = [`Добро пожаловать, ${tempData.username}!`, ''].map((text, i) => ({ id: bannerLines.length + i, text, type: 'output' as const }))
+        const welcomeLines = [t('terminal.loginSuccess', { username: tempData.username }), ''].map((text, i) => ({ id: bannerLines.length + i, text, type: 'output' as const }))
         setOutputLines([...bannerLines, ...welcomeLines])
         setLineCounter(bannerLines.length + welcomeLines.length)
         setPrompt(result.newPrompt)
@@ -435,14 +440,14 @@ export default function Terminal() {
   }
 
   const handlePasswdCurrent = async (input: string) => {
-    replaceLastLine('(passwd) Current password:', 'command')
+    replaceLastLine(t('terminal.passwdCurrent'), 'command')
     setCurrentInput('')
     setIsProcessing(true)
     const result = await sendCommand('passwd', 'passwd-current', [input])
     setIsProcessing(false)
     if (result.inputMode === 'password') {
       setInputMode('passwd-new')
-      setCurrentPromptOverride('(passwd) New password: ')
+      setCurrentPromptOverride(t('terminal.passwdNew'))
     } else if (result.output?.length) {
       addLines(result.output)
       setInputMode(null)
@@ -452,7 +457,7 @@ export default function Terminal() {
   }
 
   const handlePasswdNew = async (input: string) => {
-    replaceLastLine('(passwd) New password:', 'command')
+    replaceLastLine(t('terminal.passwdNew'), 'command')
     setCurrentInput('')
     setIsProcessing(true)
     const result = await sendCommand('passwd', 'passwd-new', [input])
@@ -687,7 +692,7 @@ export default function Terminal() {
               backgroundColor: '#0C0C0C'
             }}
           >
-            <pre style={{ margin: 0, fontSize: '14px' }}>BAJOUR Post Editor</pre>
+            <pre style={{ margin: 0, fontSize: '14px' }}>{t('editor.title')}</pre>
           </div>
           <textarea
             ref={editorRef}
@@ -711,7 +716,7 @@ export default function Terminal() {
               cursor: 'text',
               animation: 'none',
             }}
-            placeholder="Введите текст поста (поддерживается Markdown)..."
+            placeholder={t('editor.placeholder')}
           />
           <div 
             style={{ 
@@ -720,7 +725,7 @@ export default function Terminal() {
               backgroundColor: '#0C0C0C'
             }}
           >
-            <pre style={{ margin: 0, fontSize: '14px' }}>Ctrl+S - save and post | Ctrl+Q / Esc - quit</pre>
+            <pre style={{ margin: 0, fontSize: '14px' }}>{t('editor.save')} | {t('editor.cancel')}</pre>
           </div>
         </div>
       )}
@@ -732,7 +737,7 @@ export default function Terminal() {
             </div>
           ))}
           <div className="terminal-line" style={{ marginTop: '8px', color: 'var(--terminal-fg, #4AFB7F)' }}>
-            <pre>q: quit</pre>
+            <pre>{t('terminal.quitTop')}</pre>
           </div>
         </div>
       ) : interactiveMode === 'tail' ? (
@@ -743,7 +748,7 @@ export default function Terminal() {
             </div>
           ))}
           <div className="terminal-line" style={{ marginTop: '8px', color: 'var(--terminal-fg, #4AFB7F)', opacity: 0.7 }}>
-            <pre>-- Ctrl+C: выход --</pre>
+            <pre>-- {t('terminal.stopFollowing')} --</pre>
           </div>
         </div>
       ) : (

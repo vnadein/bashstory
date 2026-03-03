@@ -25,6 +25,7 @@ export function getDb(): Database.Database {
         role TEXT NOT NULL DEFAULT 'user',
         bio TEXT DEFAULT '',
         is_private INTEGER DEFAULT 0,
+        lang TEXT DEFAULT 'en',
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
 

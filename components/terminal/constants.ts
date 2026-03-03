@@ -25,11 +25,11 @@ export const AVAILABLE_COMMANDS = [
   'follow', 'unfollow', 'followers', 'following',
   'msg', 'message', 'mail', 'inbox', 'read',
   'mentions', 'notify',
-  'set_bio', 'block', 'search', 'trending', 'like', 'unlike',
+  'set_bio', 'block', 'search', 'trending', 'like', 'unlike', 'lang', 'language',
 ]
 
 export const PUBLIC_COMMANDS = [
-  'help', 'login', 'register', 'trending', 'read', 'finger', 'whois',
+  'help', 'login', 'register', 'trending', 'read', 'finger', 'whois', 'lang', 'language',
 ]
 
 export const AUTH_COMMANDS = [
@@ -39,5 +39,5 @@ export const AUTH_COMMANDS = [
   'follow', 'unfollow', 'followers', 'following',
   'msg', 'message', 'mail', 'inbox', 'read', 'readpost', 'readmsg',
   'mentions', 'notify',
-  'set_bio', 'block', 'search', 'trending', 'like', 'unlike',
+  'set_bio', 'block', 'search', 'trending', 'like', 'unlike', 'lang', 'language',
 ]

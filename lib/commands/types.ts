@@ -5,6 +5,7 @@ export interface CommandResult {
   inputMode?: 'password' | 'submit' | 'tail-follow' | 'post-text' | 'post-multiline' | null
   inputPrompt?: string
   renderMarkdown?: boolean
+  userLang?: string
 }
 
 export interface CommandContext {

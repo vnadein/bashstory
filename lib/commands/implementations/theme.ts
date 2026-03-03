@@ -1,37 +1,19 @@
 import { CommandResult, CommandContext } from '../types'
+import { t } from '@/lib/i18n'
 
-export function cmdTheme(args: string[]): CommandResult {
-  if (args[0] === '--help' || args[0] === '-h') {
-    return {
-      output: [
-        'Использование: theme <hex-цвет>',
-        '',
-        'Установить цвет текста терминала.',
-        '',
-        'Опции:',
-        '  --help, -h     показать эту справку',
-        '',
-        'Примеры:',
-        '  theme #4AFB7F  -- зелёный цвет (по умолчанию)',
-        '  theme #FF5733  -- оранжевый цвет',
-        '  theme #00FFFF  -- голубой цвет',
-      ],
-    }
+export function cmdTheme(args: string[], context: CommandContext): CommandResult {
+  if (args.length === 0) {
+    return { output: [t('terminal.usage', { usage: 'theme <#RRGGBB>' })] }
   }
-  
+
   const color = args[0]
 
-  if (!color) {
-    return { output: ['Использование: theme <hex-цвет>', 'Пример: theme #4AFB7F'] }
-  }
-
-  const hexRegex = /^#[0-9A-Fa-f]{6}$/
-  if (!hexRegex.test(color)) {
-    return { output: [`theme: '${color}' не является корректным HEX-цветом. Используйте формат #RRGGBB.`] }
+  if (!/^#[0-9A-Fa-f]{6}$/.test(color)) {
+    return { output: [t('terminal.usage', { usage: 'theme <#RRGGBB>' })] }
   }
 
   return {
-    output: [`Тема установлена: ${color}`],
+    output: [t('terminal.themeSet', { theme: color })],
     newPrompt: color,
   }
 }
