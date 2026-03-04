@@ -1,9 +1,8 @@
 import { CommandResult, CommandContext } from '../types'
 import { getTrendingPosts, likePost, unlikePost, getPostById } from '@/lib/social'
-import { getLocale, t } from '@/lib/i18n'
+import { t } from '@/lib/i18n'
 
 export function cmdTrending(args: string[], context: CommandContext): CommandResult {
-  const lang = getLocale()
   let limit = 20
   
   for (let i = 0; i < args.length; i++) {

@@ -156,25 +156,6 @@ export async function executeCommand(
       return cmdReadPost(args, session)
     case 'readmsg':
       return cmdRead(args, session)
-    case 'follow':
-      return cmdFollow(args, session)
-    case 'unfollow':
-      return cmdUnfollow(args, session)
-    case 'followers':
-      return cmdFollowers(args, session)
-    case 'following':
-      return cmdFollowing(args, session)
-    case 'msg':
-    case 'message':
-      return cmdMsg(args, session)
-    case 'mail':
-    case 'inbox':
-      return cmdMail(args, session)
-    case 'readmsg':
-    case 'read':
-      return cmdRead(args, session)
-    case 'readpost':
-      return cmdReadPost(args, session)
     case 'mentions':
       return cmdMentions(args, session)
     case 'notify':
