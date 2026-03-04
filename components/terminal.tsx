@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { BootScreen } from './boot-screen'
 import { LoginTui } from './terminal/login-tui'
 import { RegisterTui } from './terminal/register-tui'
-import { ASCII_BANNER, DEFAULT_THEME_COLOR, DEFAULT_PROMPT, AVAILABLE_COMMANDS, PUBLIC_COMMANDS, AUTH_COMMANDS } from './terminal/constants'
+import { ASCII_BANNER, DEFAULT_THEME_COLOR, DEFAULT_PROMPT, PUBLIC_COMMANDS, AUTH_COMMANDS } from './terminal/constants'
 import { OutputLine, InputMode, InteractiveMode } from './terminal/types'
 import { getCookie } from './terminal/utils'
 import { initLocale, setUserLocale, t, getLocale } from '@/lib/i18n'
@@ -20,7 +20,6 @@ export default function Terminal() {
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT)
   const [commandHistory, setCommandHistory] = useState<string[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
-  const [lineCounter, setLineCounter] = useState(ASCII_BANNER.length)
   const [isProcessing, setIsProcessing] = useState(false)
   const [themeColor, setThemeColor] = useState(DEFAULT_THEME_COLOR)
   const [cursorPosition, setCursorPosition] = useState(0)
@@ -55,10 +54,10 @@ export default function Terminal() {
   }, [])
 
   const addLines = useCallback(
-    (texts: string[], type: 'output' | 'command' | 'prompt' = 'output', renderMarkdown = false, isPostContent = false) => {
+    (texts: string[], type: 'output' | 'command' | 'prompt' = 'output', renderMarkdown = false) => {
       setOutputLines((prev) => {
         let id = prev.length > 0 ? Math.max(...prev.map((l) => l.id)) + 1 : 0
-        const newLines = texts.map((text) => ({ id: id++, text, type, renderMarkdown, isPostContent }))
+        const newLines = texts.map((text) => ({ id: id++, text, type, renderMarkdown }))
         return [...prev, ...newLines]
       })
     },
@@ -301,7 +300,6 @@ export default function Terminal() {
       const result = await sendCommand(input)
       if (result.output?.length) addLines(result.output)
       setOutputLines(ASCII_BANNER.map((text, i) => ({ id: i, text, type: 'output' as const })))
-      setLineCounter(ASCII_BANNER.length)
       setPrompt(DEFAULT_PROMPT)
       setThemeColor(DEFAULT_THEME_COLOR)
       setCommandHistory([])
@@ -315,12 +313,10 @@ export default function Terminal() {
       setTimeout(() => {
         if (result.clear) {
           setOutputLines([])
-          setLineCounter(0)
         }
         setShowBootScreen(true)
         setTimeout(() => {
           setOutputLines(ASCII_BANNER.map((text, i) => ({ id: i, text, type: 'output' as const })))
-          setLineCounter(ASCII_BANNER.length)
           setPrompt(DEFAULT_PROMPT)
           setThemeColor(DEFAULT_THEME_COLOR)
           setCommandHistory([])
@@ -377,7 +373,6 @@ export default function Terminal() {
         '',
       ].map((text, i) => ({ id: bannerLines.length + i, text, type: 'output' as const }))
       setOutputLines([...bannerLines, ...welcomeLines])
-      setLineCounter(bannerLines.length + welcomeLines.length)
       setPrompt(result.newPrompt)
       return true
     }
@@ -399,7 +394,6 @@ export default function Terminal() {
         '',
       ].map((text, i) => ({ id: bannerLines.length + i, text, type: 'output' as const }))
       setOutputLines([...bannerLines, ...welcomeLines])
-      setLineCounter(bannerLines.length + welcomeLines.length)
       return { success: true }
     }
     
@@ -441,7 +435,6 @@ export default function Terminal() {
         const bannerLines = ASCII_BANNER.map((text, i) => ({ id: i, text, type: 'output' as const }))
         const welcomeLines = [t('terminal.loginSuccess', { username: tempData.username }), ''].map((text, i) => ({ id: bannerLines.length + i, text, type: 'output' as const }))
         setOutputLines([...bannerLines, ...welcomeLines])
-        setLineCounter(bannerLines.length + welcomeLines.length)
         setPrompt(result.newPrompt)
       } else if (result.output?.length) {
         addLines(result.output)
@@ -593,7 +586,6 @@ export default function Terminal() {
       setInteractiveMode(null)
       setInteractiveData([])
       setOutputLines([])
-      setLineCounter(0)
       requestAnimationFrame(() => inputRef.current?.focus())
       return
     }

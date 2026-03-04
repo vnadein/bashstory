@@ -1,9 +1,8 @@
 import { CommandResult, CommandContext } from '../types'
-import { getUserByUsername, getUserById, getAllUsers, getUserById as getUserProfile } from '@/lib/social'
-import { getLocale, t } from '@/lib/i18n'
+import { getUserByUsername, getUserById, getAllUsers } from '@/lib/social'
+import { t } from '@/lib/i18n'
 
 export function cmdFinger(args: string[], context: CommandContext): CommandResult {
-  const lang = getLocale()
   
   let username: string | undefined = args[0]
   

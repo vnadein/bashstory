@@ -1,6 +1,6 @@
 import { CommandResult, CommandContext } from '../types'
-import { follow, unfollow, getFollowers, getFollowing, isFollowing, getUserByUsername } from '@/lib/social'
-import { getLocale, t } from '@/lib/i18n'
+import { follow, unfollow, getFollowers, getFollowing, getUserByUsername } from '@/lib/social'
+import { t } from '@/lib/i18n'
 
 export function cmdFollow(args: string[], context: CommandContext): CommandResult {
   if (!context.userId) {
@@ -52,7 +52,6 @@ export function cmdFollowers(args: string[], context: CommandContext): CommandRe
     return { output: [t('terminal.needAuth')] }
   }
 
-  const lang = getLocale()
   let targetUserId = context.userId
 
   if (args.length > 0) {
