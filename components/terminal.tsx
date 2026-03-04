@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { BootScreen } from './boot-screen'
+import { LoginTui } from './terminal/login-tui'
+import { RegisterTui } from './terminal/register-tui'
 import { ASCII_BANNER, DEFAULT_THEME_COLOR, DEFAULT_PROMPT, AVAILABLE_COMMANDS, PUBLIC_COMMANDS, AUTH_COMMANDS } from './terminal/constants'
 import { OutputLine, InputMode, InteractiveMode } from './terminal/types'
 import { getCookie } from './terminal/utils'
@@ -34,6 +36,8 @@ export default function Terminal() {
   const [inputMode, setInputMode] = useState<InputMode>(null)
   const [currentPromptOverride, setCurrentPromptOverride] = useState<string | null>(null)
   const [tempData, setTempData] = useState<Record<string, string>>({})
+  const [loginData, setLoginData] = useState({ username: '', password: '', error: '' })
+  const [registerData, setRegisterData] = useState({ username: '', password: '', confirmPassword: '', error: '' })
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -77,6 +81,10 @@ export default function Terminal() {
   }, [outputLines, suggestions])
 
   useEffect(() => {
+    // Не фокусировать input в режимах login/register - там своя система навигации
+    if (interactiveMode === 'login' || interactiveMode === 'register') {
+      return
+    }
     requestAnimationFrame(() => {
       inputRef.current?.focus()
     })
@@ -223,11 +231,11 @@ export default function Terminal() {
 
   const handleNormalCommand = async (input: string) => {
     const displayPrompt = currentPromptOverride || prompt
-    
+
     if (suggestions) setSuggestions(null)
-    addLines([`${displayPrompt}${input}`], 'command')
     if (!input.trim()) return
 
+    addLines([`${displayPrompt}${input}`], 'command')
     setCommandHistory((prev) => [...prev, input])
     setHistoryIndex(-1)
     setCursorPosition(0)
@@ -237,26 +245,16 @@ export default function Terminal() {
     const cmd = input.trim().toLowerCase().split(/\s+/)[0]
 
     if (cmd === 'login') {
-      addLines([`${prompt}${input}`], 'command')
-      setOutputLines([])
-      setLineCounter(0)
-      setCursorPosition(0)
-      const result = await sendCommand('login')
-      if (result.inputMode === 'password') {
-        setInputMode('login-username')
-        setCurrentPromptOverride(t('terminal.loginPrompt'))
-      } else if (result.output?.length) {
-        addLines(result.output)
-      }
+      inputRef.current?.blur()
+      setInteractiveMode('login')
+      setLoginData({ username: '', password: '', error: '' })
       return
     }
 
     if (cmd === 'register') {
-      addLines([`${prompt}${input}`], 'command')
-      setOutputLines([])
-      setLineCounter(0)
-      setInputMode('register-username')
-      setCurrentPromptOverride(t('terminal.loginPrompt'))
+      inputRef.current?.blur()
+      setInteractiveMode('register')
+      setRegisterData({ username: '', password: '', confirmPassword: '', error: '' })
       return
     }
 
@@ -361,39 +359,55 @@ export default function Terminal() {
     }
   }
 
-  const handleLoginStep = async (input: string) => {
-    if (inputMode === 'login-username') {
-      replaceLastLine(`login: ${input}`, 'command')
-      setTempData({ username: input })
-      setCursorPosition(0)
-      setCurrentInput('')
-      setInputMode('login-password')
-      setCurrentPromptOverride(t('terminal.password'))
-      return
-    }
+  const handleLoginTui = async (username: string, password: string): Promise<boolean> => {
+    setIsProcessing(true)
+    const result = await sendCommand('login', 'login', [username, password])
+    setIsProcessing(false)
 
-    if (inputMode === 'login-password') {
-      setCurrentInput('')
-      setIsProcessing(true)
-      const result = await sendCommand('login', 'login', [tempData.username, input])
-      setIsProcessing(false)
-      if (result.newPrompt) {
-        if (result.userLang) {
-          setUserLocale(result.userLang)
-        }
-        const bannerLines = ASCII_BANNER.map((text, i) => ({ id: i, text, type: 'output' as const }))
-        const welcomeLines = [`Добро пожаловать, ${tempData.username}!`, ''].map((text, i) => ({ id: bannerLines.length + i, text, type: 'output' as const }))
-        setOutputLines([...bannerLines, ...welcomeLines])
-        setLineCounter(bannerLines.length + welcomeLines.length)
-        setPrompt(result.newPrompt)
-      } else if (result.output?.length) {
-        addLines(result.output)
+    if (result.newPrompt) {
+      if (result.userLang) {
+        setUserLocale(result.userLang)
       }
-      setInputMode(null)
-      setCurrentPromptOverride(null)
-      setTempData({})
-      setCursorPosition(0)
+      const bannerLines = ASCII_BANNER.map((text, i) => ({ id: i, text, type: 'output' as const }))
+      const welcomeLines = [
+        '',
+        `Добро пожаловать, ${username}!`,
+        '',
+        ...(result.output || []),
+        '',
+      ].map((text, i) => ({ id: bannerLines.length + i, text, type: 'output' as const }))
+      setOutputLines([...bannerLines, ...welcomeLines])
+      setLineCounter(bannerLines.length + welcomeLines.length)
+      setPrompt(result.newPrompt)
+      return true
     }
+    return false
+  }
+
+  const handleRegisterTui = async (username: string, password: string, confirmPassword: string): Promise<{ success: boolean; error?: string }> => {
+    setIsProcessing(true)
+    const result = await sendCommand('register', 'register', [username, password, confirmPassword])
+    setIsProcessing(false)
+
+    if (result.output?.length && (result.output[0].includes('registered') || result.output[0].includes('зарегистрирован'))) {
+      // Успешная регистрация - показываем сообщение и закрываем форму
+      const bannerLines = ASCII_BANNER.map((text, i) => ({ id: i, text, type: 'output' as const }))
+      const welcomeLines = [
+        '',
+        `Пользователь ${username} зарегистрирован!`,
+        'Теперь вы можете войти.',
+        '',
+      ].map((text, i) => ({ id: bannerLines.length + i, text, type: 'output' as const }))
+      setOutputLines([...bannerLines, ...welcomeLines])
+      setLineCounter(bannerLines.length + welcomeLines.length)
+      return { success: true }
+    }
+    
+    // Ошибка регистрации
+    if (result.output?.length) {
+      return { success: false, error: result.output[0] }
+    }
+    return { success: false, error: 'Ошибка регистрации' }
   }
 
   const handleRegisterStep = async (input: string) => {
@@ -472,9 +486,7 @@ export default function Terminal() {
     const input = currentInput
     setCurrentInput('')
 
-    if (inputMode === 'login-username' || inputMode === 'login-password') {
-      await handleLoginStep(input)
-    } else if (inputMode === 'register-username' || inputMode === 'register-password1' || inputMode === 'register-password2') {
+    if (inputMode === 'register-username' || inputMode === 'register-password1' || inputMode === 'register-password2') {
       await handleRegisterStep(input)
     } else if (inputMode === 'passwd-current') {
       await handlePasswdCurrent(input)
@@ -555,6 +567,11 @@ export default function Terminal() {
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Игнорируем нажатия когда активен LoginTui или RegisterTui - у них своя обработка
+    if (interactiveMode === 'login' || interactiveMode === 'register') {
+      return
+    }
+
     if (e.key === 'Tab' && !inputMode && !interactiveMode) {
       e.preventDefault()
       handleTabCompletion()
@@ -751,6 +768,38 @@ export default function Terminal() {
             <pre>-- {t('terminal.stopFollowing')} --</pre>
           </div>
         </div>
+      ) : interactiveMode === 'login' ? (
+        <LoginTui
+          key="login-tui"
+          themeColor={themeColor}
+          onLogin={handleLoginTui}
+          onExit={() => {
+            setInteractiveMode(null)
+            setLoginData({ username: '', password: '', error: '' })
+            requestAnimationFrame(() => inputRef.current?.focus())
+          }}
+          onLoginSuccess={() => {
+            setInteractiveMode(null)
+            setLoginData({ username: '', password: '', error: '' })
+            requestAnimationFrame(() => inputRef.current?.focus())
+          }}
+        />
+      ) : interactiveMode === 'register' ? (
+        <RegisterTui
+          key="register-tui"
+          themeColor={themeColor}
+          onRegister={handleRegisterTui}
+          onExit={() => {
+            setInteractiveMode(null)
+            setRegisterData({ username: '', password: '', confirmPassword: '', error: '' })
+            requestAnimationFrame(() => inputRef.current?.focus())
+          }}
+          onRegisterSuccess={() => {
+            setInteractiveMode(null)
+            setRegisterData({ username: '', password: '', confirmPassword: '', error: '' })
+            requestAnimationFrame(() => inputRef.current?.focus())
+          }}
+        />
       ) : (
         <div ref={scrollRef} className="terminal-output">
           <TerminalOutput lines={outputLines} themeColor={themeColor} />
@@ -767,7 +816,7 @@ export default function Terminal() {
           )}
         </div>
       )}
-      
+
       <input
         ref={inputRef}
         type="text"
@@ -785,7 +834,7 @@ export default function Terminal() {
         autoComplete="off"
         autoCapitalize="off"
         spellCheck={false}
-        disabled={isProcessing && interactiveMode !== 'top'}
+        disabled={(isProcessing && interactiveMode !== 'top') || interactiveMode === 'login' || interactiveMode === 'register'}
         aria-label="Terminal input"
         style={{
           position: 'fixed',

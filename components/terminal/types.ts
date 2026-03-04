@@ -7,7 +7,7 @@ export interface OutputLine {
 
 export type InputMode = null | 'login-username' | 'login-password' | 'register-username' | 'register-password1' | 'register-password2' | 'passwd-current' | 'passwd-new' | 'post-text' | 'post-multiline'
 
-export type InteractiveMode = null | 'top' | 'tail'
+export type InteractiveMode = null | 'top' | 'tail' | 'login' | 'register'
 
 export interface TerminalState {
   outputLines: OutputLine[]
