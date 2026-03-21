@@ -40,7 +40,8 @@
     "@vercel/analytics": "1.6.1",
     "autoprefixer": "^10.4.20",
     "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^11.6.0",
+    "@types/sql.js": "^1.4.9",
+    "sql.js": "^1.12.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.1.1",
@@ -66,7 +67,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.0",
     "@types/bcryptjs": "^2.4.6",
-    "@types/better-sqlite3": "^7.6.12",
+
     "@types/node": "^22",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { executeCommand, registerProcess, removeProcess, cleanOldProcesses } from '@/lib/commands/dispatcher'
+import { executeCommand, registerProcess, removeProcess } from '@/lib/commands/dispatcher'
 import { getSession, deleteSession, cleanOldSessions } from '@/lib/session'
+import { ensureDb, getDb } from '@/lib/db'
 import { cookies } from 'next/headers'
 
 function getIp(request: NextRequest): string {
@@ -13,6 +14,9 @@ function getIp(request: NextRequest): string {
 
 export async function POST(request: NextRequest) {
   try {
+    // Initialise the WASM SQLite singleton before any DB access
+    await ensureDb()
+
     const body = await request.json()
     const { command, phase, args, submitText } = body
 
@@ -47,8 +51,7 @@ export async function POST(request: NextRequest) {
     if (phase === 'login' && result.newPrompt) {
       const username = args?.[0]
       if (username) {
-        const db = await import('@/lib/db')
-        const user = db.getDb().prepare('SELECT id FROM users WHERE username = ?').get(username) as { id: number } | undefined
+        const user = getDb().prepare('SELECT id FROM users WHERE username = ?').get(username) as { id: number } | undefined
         if (user) {
           const { createSession } = await import('@/lib/session')
           const token = createSession(user.id)
@@ -65,8 +68,7 @@ export async function POST(request: NextRequest) {
     if (phase === 'register' && result.newPrompt) {
       const username = args?.[0]
       if (username) {
-        const db = await import('@/lib/db')
-        const user = db.getDb().prepare('SELECT id FROM users WHERE username = ?').get(username) as { id: number } | undefined
+        const user = getDb().prepare('SELECT id FROM users WHERE username = ?').get(username) as { id: number } | undefined
         if (user) {
           const { createSession } = await import('@/lib/session')
           const token = createSession(user.id)
