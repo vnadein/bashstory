@@ -3,17 +3,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // sql.js ships a .wasm file; allow Next.js to bundle it in server-side code
-  webpack(config, { isServer }) {
-    if (isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        path: false,
-        crypto: false,
-      }
-    }
-    // Treat .wasm files as assets so webpack doesn't try to parse them
+  // sql.js ships a .wasm file; instruct webpack not to process it as JS
+  webpack(config) {
     config.module.rules.push({
       test: /\.wasm$/,
       type: 'asset/resource',

@@ -5,6 +5,16 @@ import fs from 'fs'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const initSqlJs = require('sql.js')
 
+// Point sql.js at the WASM file bundled inside node_modules so it can be
+// found reliably at runtime regardless of the Next.js output directory.
+const WASM_PATH = path.join(
+  process.cwd(),
+  'node_modules',
+  'sql.js',
+  'dist',
+  'sql-wasm.wasm'
+)
+
 const DB_PATH = path.join(process.cwd(), 'data', 'bashstory.db')
 
 // ─── Thin synchronous wrapper that mirrors the better-sqlite3 API ────────────
@@ -83,7 +93,9 @@ function _persist(raw: import('sql.js').Database) {
 }
 
 async function _bootstrap(): Promise<SyncDatabase> {
-  const SQL = await initSqlJs()
+  const SQL = await initSqlJs({
+    locateFile: () => WASM_PATH,
+  })
 
   let rawDb: import('sql.js').Database
   const dir = path.dirname(DB_PATH)
