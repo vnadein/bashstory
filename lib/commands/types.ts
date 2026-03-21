@@ -6,6 +6,8 @@ export interface CommandResult {
   inputPrompt?: string
   renderMarkdown?: boolean
   userLang?: string
+  /** Session token created by login/register – used by the route handler to set the cookie */
+  sessionToken?: string
 }
 
 export interface CommandContext {

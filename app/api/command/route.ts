@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { executeCommand, registerProcess, removeProcess } from '@/lib/commands/dispatcher'
 import { getSession, deleteSession, cleanOldSessions } from '@/lib/session'
-import { ensureDb, getDb } from '@/lib/db'
+import { ensureDb } from '@/lib/db'
 import { cookies } from 'next/headers'
 
 function getIp(request: NextRequest): string {
@@ -48,38 +48,15 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json(result)
 
-    if (phase === 'login' && result.newPrompt) {
-      const username = args?.[0]
-      if (username) {
-        const user = getDb().prepare('SELECT id FROM users WHERE username = ?').get(username) as { id: number } | undefined
-        if (user) {
-          const { createSession } = await import('@/lib/session')
-          const token = createSession(user.id)
-          response.cookies.set('session_token', token, {
-            httpOnly: true,
-            path: '/',
-            sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 7,
-          })
-        }
-      }
-    }
-
-    if (phase === 'register' && result.newPrompt) {
-      const username = args?.[0]
-      if (username) {
-        const user = getDb().prepare('SELECT id FROM users WHERE username = ?').get(username) as { id: number } | undefined
-        if (user) {
-          const { createSession } = await import('@/lib/session')
-          const token = createSession(user.id)
-          response.cookies.set('session_token', token, {
-            httpOnly: true,
-            path: '/',
-            sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 7,
-          })
-        }
-      }
+    // Use the session token that was already created by cmdLoginProcess / cmdRegisterProcess
+    // instead of creating a second redundant session.
+    if (result.sessionToken) {
+      response.cookies.set('session_token', result.sessionToken, {
+        httpOnly: true,
+        path: '/',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7,
+      })
     }
 
     if ((command === 'logout' || command === 'exit') && result.newPrompt) {

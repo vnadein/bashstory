@@ -1,7 +1,7 @@
 import { CommandResult, CommandContext } from '../types'
 import { getDb } from '@/lib/db'
 import bcrypt from 'bcryptjs'
-import { getLocale, t } from '@/lib/i18n'
+import { t } from '@/lib/i18n'
 
 export function cmdRegisterStart(): CommandResult {
   return {

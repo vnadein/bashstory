@@ -41,7 +41,7 @@ export function cmdLoginProcess(args: string[], context: CommandContext): Comman
     return { output: [t('terminal.loginFailed')] }
   }
 
-  const token = createSession(user.id)
+  const sessionToken = createSession(user.id)
   
   const summary = getLoginSummary(user.id)
   const output: string[] = []
@@ -70,6 +70,7 @@ export function cmdLoginProcess(args: string[], context: CommandContext): Comman
     output,
     newPrompt: `${user.username}@bajour:~$ `,
     userLang: user.lang || 'en',
+    sessionToken,
   }
 }
 
