@@ -17,15 +17,17 @@ export function LoginTui({ themeColor, onLogin, onExit, onLoginSuccess }: LoginT
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  const [isMounted, setIsMounted] = useState(false)
+  // Guard: ignore keydown events for 150ms after mount so the Enter key that
+  // opened the form doesn't immediately move focus to the password field.
+  const [ready, setReady] = useState(false)
 
-  // Принудительный сброс при монтировании
   useEffect(() => {
     setSelectedField('username')
     setUsername('')
     setPassword('')
     setError('')
-    setIsMounted(true)
+    const t = setTimeout(() => setReady(true), 150)
+    return () => clearTimeout(t)
   }, [])
 
   useEffect(() => {
